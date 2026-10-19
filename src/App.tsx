@@ -494,7 +494,7 @@ export default function App() {
               Prontuários Criptografados (LGPD Saúde)
             </span>
             <span aria-hidden="true" className="text-slate-700">·</span>
-            <span>RT: Dra. Camila Alencar · CRO-SP 89452</span>
+            <span>&copy; Todos os direitos reservados: Lorenzo Cardoso - Engenheiro de Software e Automação / Cientista de Dados / Especialista em Heurísticas Comportamentais / Escritor Acadêmico.</span>
           </div>
         </div>
       </footer>
