@@ -130,7 +130,7 @@ export const CrmAnalytics: React.FC<CrmAnalyticsProps> = ({ patients, appointmen
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(totalPipelineRevenue)}
             </p>
             <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5 mt-0.5">
-              ↑ +24% vs. mês anterior
+              {patients.length > 0 ? `${patients.length} pacientes no pipeline` : 'Aguardando primeiros pacientes'}
             </span>
           </div>
           <div className="w-11 h-11 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
@@ -157,10 +157,10 @@ export const CrmAnalytics: React.FC<CrmAnalyticsProps> = ({ patients, appointmen
           <div>
             <p className="text-xs text-slate-500 font-medium">NPS de Satisfação</p>
             <p className="text-xl font-heading font-extrabold text-slate-900 mt-1">
-              {avgNps} / 10
+              {patients.length > 0 ? `${avgNps} / 10` : '—'}
             </p>
             <span className="text-[10px] text-purple-600 font-medium mt-0.5 block">
-              Zona de Excelência Médica
+              {patients.length > 0 ? 'Zona de Excelência' : 'Aguardando avaliações'}
             </span>
           </div>
           <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -172,10 +172,10 @@ export const CrmAnalytics: React.FC<CrmAnalyticsProps> = ({ patients, appointmen
           <div>
             <p className="text-xs text-slate-500 font-medium">Adesão ao Recall Semestral</p>
             <p className="text-xl font-heading font-extrabold text-slate-900 mt-1">
-              {avgRecallAdherence}%
+              {patients.length > 0 ? `${avgRecallAdherence}%` : '—'}
             </p>
             <span className="text-[10px] text-teal-600 font-medium mt-0.5 block">
-              Profilaxia & Prevenção
+              {patients.length > 0 ? 'Retenção Ativa' : 'Sem histórico prévio'}
             </span>
           </div>
           <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">

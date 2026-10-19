@@ -154,16 +154,42 @@ export const CrmPipeline: React.FC<CrmPipelineProps> = ({
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-500 font-medium">Redução de No-Show (IA)</p>
+            <p className="text-xs text-slate-500 font-medium">Total de Prontuários</p>
             <p className="text-lg sm:text-xl font-heading font-extrabold text-teal-600 mt-1">
-              -62% faltas
+              {patients.length} {patients.length === 1 ? 'paciente' : 'pacientes'}
             </p>
           </div>
           <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
-            <Clock className="w-5 h-5" />
+            <UserCheck className="w-5 h-5" />
           </div>
         </div>
       </div>
+
+      {/* Operational Empty State Banner when 0 patients */}
+      {patients.length === 0 && (
+        <div className="bg-gradient-to-r from-slate-900 to-slate-950 border border-cyan-800/50 p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-white shadow-md">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] bg-cyan-950 text-cyan-300 border border-cyan-800 font-semibold px-2 py-0.5 rounded">
+                Plataforma Operacional Ativa
+              </span>
+              <span className="text-xs text-slate-400">Banco de dados limpo para uso prático</span>
+            </div>
+            <h4 className="font-heading font-bold text-base text-white">
+              Nenhum paciente cadastrado ainda
+            </h4>
+            <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+              Os dados fictícios foram removidos. Agora, apenas os dados reais que você cadastrar ou que o SDR capturar pelas redes sociais aparecerão aqui no pipeline.
+            </p>
+          </div>
+          <button
+            onClick={onOpenNewPatientModal}
+            className="px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-xs rounded-lg transition-transform hover:scale-105 cursor-pointer shrink-0 shadow-lg shadow-cyan-500/20"
+          >
+            + Cadastrar Primeiro Paciente
+          </button>
+        </div>
+      )}
 
       {/* Control Bar: Search, Category Filters & Add Lead */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">

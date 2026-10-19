@@ -2,6 +2,7 @@ export type TabType =
   | 'crm' 
   | 'scheduling' 
   | 'automations'
+  | 'sdr'
   | 'content_agents' 
   | 'chatbot' 
   | 'engagement_reports' 
@@ -9,6 +10,38 @@ export type TabType =
   | 'whatsapp' 
   | 'services' 
   | 'cro';
+
+export type SocialPlatform = 'instagram' | 'whatsapp' | 'facebook' | 'tiktok' | 'google';
+
+export interface SdrLead {
+  id: string;
+  name: string;
+  phone: string;
+  socialHandle?: string;
+  channel: SocialPlatform;
+  campaignOrigin?: string;
+  interestProcedure: string;
+  urgency: 'baixa' | 'media' | 'alta' | 'imediata';
+  leadScore: number; // 0 - 100
+  qualificationStatus: 'qualificando' | 'qualificado' | 'agendado' | 'desqualificado';
+  capturedAt: string;
+  lastMessage: string;
+  sdrNotes: string;
+  convertedToPatientId?: string;
+}
+
+export interface SocialIntegrationConfig {
+  id: SocialPlatform;
+  name: string;
+  icon: string;
+  status: 'connected' | 'disconnected' | 'pending';
+  accountIdentifier: string;
+  webhookUrl: string;
+  verifyToken: string;
+  apiKeyOrToken?: string;
+  apiDocsUrl: string;
+  activeAutomationsCount: number;
+}
 
 export type AutomationTrigger = 
   | 'appointment_scheduled'

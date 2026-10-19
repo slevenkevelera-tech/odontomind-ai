@@ -46,16 +46,17 @@ export const Header: React.FC<HeaderProps> = ({
   onTriggerDemoToast
 }) => {
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'crm', label: 'CRM de Pacientes', icon: <Kanban className="w-4 h-4" />, badge: 'Prontuários' },
+    { id: 'crm', label: 'CRM de Pacientes', icon: <Kanban className="w-4 h-4 text-cyan-400" />, badge: 'Prontuários' },
+    { id: 'sdr', label: 'SDR & Redes Sociais', icon: <Bot className="w-4 h-4 text-purple-400" />, badge: 'Meta & Social' },
     { id: 'automations', label: 'Skills & Automações', icon: <Zap className="w-4 h-4 text-amber-400" />, badge: '8 Skills' },
     { id: 'engagement_reports', label: 'Analytics & Gráficos', icon: <BarChart3 className="w-4 h-4 text-cyan-400" />, badge: 'Recharts' },
-    { id: 'scheduling', label: 'Agenda Integrada', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'scheduling', label: 'Agenda Integrada', icon: <Calendar className="w-4 h-4 text-emerald-400" /> },
     { id: 'content_agents', label: 'Estúdio de Conteúdo IA', icon: <Share2 className="w-4 h-4 text-rose-400" />, badge: 'Posts & Vídeos' },
     { id: 'chatbot', label: 'Chatbot Gemini', icon: <MessagesSquare className="w-4 h-4 text-emerald-400" />, badge: 'Multi-turn' },
     { id: 'whatsapp', label: 'WhatsApp & Meta API', icon: <MessageCircle className="w-4 h-4 text-emerald-400" />, badge: 'Meta Cloud API' },
     { id: 'roadmap', label: 'Mapa do Projeto', icon: <Compass className="w-4 h-4" /> },
     { id: 'services', label: 'Serviços & LTV', icon: <Sparkles className="w-4 h-4" /> },
-    { id: 'cro', label: 'Cartilha Ética CRO', icon: <ShieldCheck className="w-4 h-4" /> }
+    { id: 'cro', label: 'Cartilha Ética CRO', icon: <ShieldCheck className="w-4 h-4 text-indigo-400" /> }
   ];
 
   return (
@@ -132,27 +133,27 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Navigation Sub-bar */}
-      <div className="border-t border-slate-800/80 bg-slate-950/60">
+      {/* Navigation Sub-bar - Aligned, Spacious and Visible without awkward cutting */}
+      <div className="border-t border-slate-800/80 bg-slate-950/80 backdrop-blur-sm min-h-[60px] py-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-1 sm:space-x-2 overflow-x-auto py-2 scrollbar-none" aria-label="Tabs">
+          <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2" aria-label="Tabs">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                  className={`h-9 flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                     isActive
-                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/70 border border-transparent'
                   }`}
                 >
-                  {item.icon}
+                  <span className="shrink-0">{item.icon}</span>
                   <span>{item.label}</span>
                   {item.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
-                      isActive ? 'bg-cyan-400 text-slate-950' : 'bg-slate-800 text-slate-400'
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ml-0.5 tracking-tight ${
+                      isActive ? 'bg-cyan-400 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400 border border-slate-700/60'
                     }`}>
                       {item.badge}
                     </span>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TabType, PatientLead, PipelineStage, Appointment, ToastNotification, ToastType, SmsDeliveryStatus } from './types';
 import { initialPatients, initialAppointments } from './data/crmData';
 import { Header } from './components/Header';
@@ -6,6 +6,7 @@ import { RoadmapMap } from './components/RoadmapMap';
 import { CrmPipeline } from './components/CrmPipeline';
 import { CrmAnalytics } from './components/CrmAnalytics';
 import { SchedulingModule } from './components/SchedulingModule';
+import { SdrSocialHub } from './components/SdrSocialHub';
 import { ContentCreationStudio } from './components/ContentCreationStudio';
 import { GeminiChatbot } from './components/GeminiChatbot';
 import { WhatsAppSimulator } from './components/WhatsAppSimulator';
@@ -24,51 +25,50 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('crm');
-  const [patients, setPatients] = useState<PatientLead[]>(initialPatients);
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
+
+  // Pacientes e Prontuários Reais (iniciados limpos ou carregados do navegador)
+  const [patients, setPatients] = useState<PatientLead[]>(() => {
+    const saved = localStorage.getItem('odontomind_patients');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+    }
+    return initialPatients;
+  });
+
+  // Agendamentos Reais da Clínica
+  const [appointments, setAppointments] = useState<Appointment[]>(() => {
+    const saved = localStorage.getItem('odontomind_appointments');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+    }
+    return initialAppointments;
+  });
+
   const [isNewPatientModalOpen, setIsNewPatientModalOpen] = useState(false);
   const [isRenderModalOpen, setIsRenderModalOpen] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
 
-  // Initial realistic clinical alerts for dentist follow-up & confirmed appointments
-  const [notifications, setNotifications] = useState<ToastNotification[]>([
-    {
-      id: 'ntf-1',
-      type: 'urgent',
-      title: 'Atenção Imediata: Follow-up Pós-Op 24h',
-      message: 'Marcos Vinícius (Exodontia de Siso) informou edema leve e dor nota 3. Respondeu via WhatsApp.',
-      timestamp: 'Há 4 min',
-      patientId: 'pt-106',
-      patientName: 'Marcos Vinícius Prado',
-      actionLabel: 'Ver Prontuário',
-      actionTab: 'crm',
-      read: false
-    },
-    {
-      id: 'ntf-2',
-      type: 'success',
-      title: 'Novo Agendamento Confirmado',
-      message: 'Dr. Roberto Silveira confirmou presença para Cirurgia Guiada de Implante (Amanhã às 14:30).',
-      timestamp: 'Há 12 min',
-      patientId: 'pt-102',
-      patientName: 'Dr. Roberto Silveira',
-      actionLabel: 'Abrir Agenda',
-      actionTab: 'scheduling',
-      read: false
-    },
-    {
-      id: 'ntf-3',
-      type: 'warning',
-      title: 'Lembrete de Recall Preventivo Semestral',
-      message: 'Carolina Bittencourt completou 6 meses da última profilaxia. Mensagem de recall agendada.',
-      timestamp: 'Há 35 min',
-      patientId: 'pt-101',
-      patientName: 'Carolina Bittencourt',
-      actionLabel: 'Disparar WhatsApp',
-      actionTab: 'whatsapp',
-      read: true
+  // Notificações Reais da Clínica
+  const [notifications, setNotifications] = useState<ToastNotification[]>(() => {
+    const saved = localStorage.getItem('odontomind_notifications');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
-  ]);
+    return [];
+  });
+
+  // Persistência automática no armazenamento local
+  useEffect(() => {
+    localStorage.setItem('odontomind_patients', JSON.stringify(patients));
+  }, [patients]);
+
+  useEffect(() => {
+    localStorage.setItem('odontomind_appointments', JSON.stringify(appointments));
+  }, [appointments]);
+
+  useEffect(() => {
+    localStorage.setItem('odontomind_notifications', JSON.stringify(notifications));
+  }, [notifications]);
 
   // Total active pipeline calculation
   const totalPipelineValue = patients.reduce((acc, curr) => acc + curr.estimatedValue, 0);
@@ -378,6 +378,15 @@ export default function App() {
             onUpdatePatientStage={handleUpdatePatientStage}
             onOpenNewPatientModal={() => setIsNewPatientModalOpen(true)}
             onTriggerWhatsAppFollowup={handleTriggerWhatsAppFollowup}
+          />
+        )}
+
+        {activeTab === 'sdr' && (
+          <SdrSocialHub
+            onAddPatient={handleAddPatient}
+            onAddAppointment={handleAddAppointment}
+            onAddToast={addToast}
+            onNavigateToTab={(tab) => setActiveTab(tab)}
           />
         )}
 

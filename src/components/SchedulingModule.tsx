@@ -57,7 +57,7 @@ export const SchedulingModule: React.FC<SchedulingModuleProps> = ({
 
   // New Appointment Form State
   const [newPatientId, setNewPatientId] = useState(patients[0]?.id || '');
-  const [newDate, setNewDate] = useState('2026-10-16');
+  const [newDate, setNewDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [newTime, setNewTime] = useState('14:00');
   const [newDuration, setNewDuration] = useState(60);
   const [newDentist, setNewDentist] = useState('Dra. Camila Alencar');

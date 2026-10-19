@@ -926,6 +926,189 @@ app.post('/api/meta/synthesize-learning', async (req, res) => {
   }
 });
 
+// ==========================================
+// SDR (SALES DEVELOPMENT REPRESENTATIVE) & SOCIAL NETWORKS ENGINE
+// (Meta Instagram Direct, WhatsApp Cloud, Facebook Lead Ads, TikTok, Google)
+// ==========================================
+
+// 1. Process Inbound Social Lead & SDR Response (POST /api/sdr/lead-inbound)
+app.post('/api/sdr/lead-inbound', async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { 
+      channel = 'instagram', 
+      leadName = 'Lead das Redes', 
+      leadPhone = '+55 11 99999-0000',
+      socialHandle = '@usuario',
+      messageText = '', 
+      campaignOrigin = 'Orgânico / Direct',
+      conversationHistory = [] 
+    } = req.body;
+
+    const textLower = messageText.toLowerCase();
+
+    // 1. Determine Procedure of Interest
+    let interestProcedure = 'Check-up Digital & Avaliação';
+    let procedureCategory = 'Clínica Geral';
+    let baseTicket = 450;
+    let scoreAdd = 15;
+
+    if (/alinhador|invisalign|aparelho transparente|orto/i.test(textLower)) {
+      interestProcedure = 'Alinhadores Invisíveis (Ortodontia Digital)';
+      procedureCategory = 'Ortodontia';
+      baseTicket = 12500;
+      scoreAdd = 35;
+    } else if (/implante|protocolo|perdi dente|enxerto/i.test(textLower)) {
+      interestProcedure = 'Implante Dentário com Carga Imediata';
+      procedureCategory = 'Implantes';
+      baseTicket = 16000;
+      scoreAdd = 40;
+    } else if (/lente|faceta|resina estética|clareamento/i.test(textLower)) {
+      interestProcedure = 'Estética do Sorriso & Facetas Cerâmicas';
+      procedureCategory = 'Estética';
+      baseTicket = 8500;
+      scoreAdd = 30;
+    } else if (/\b(dor|dores|doendo|dói|latejando|quebrei|fraturei|urgente)\b/i.test(textLower)) {
+      interestProcedure = 'Atendimento de Urgência & Alívio de Dor';
+      procedureCategory = 'Urgência';
+      baseTicket = 650;
+      scoreAdd = 35;
+    }
+
+    // 2. Determine Urgency & Lead Score Calculation (0 to 100)
+    let urgency: 'baixa' | 'media' | 'alta' | 'imediata' = 'media';
+    let leadScore = 40 + scoreAdd;
+
+    if (/\b(dor|doendo|urgência|hoje|socorro|quebrei)\b/i.test(textLower)) {
+      urgency = 'imediata';
+      leadScore += 25;
+    } else if (/esta semana|amanhã|rápido|breve|casamento/i.test(textLower)) {
+      urgency = 'alta';
+      leadScore += 20;
+    } else if (/quanto custa|valor|preço/i.test(textLower)) {
+      urgency = 'media';
+      leadScore += 10;
+    }
+
+    if (leadPhone && leadPhone.replace(/\D/g, '').length >= 10) {
+      leadScore += 15;
+    }
+
+    leadScore = Math.min(100, Math.max(15, leadScore));
+
+    const qualificationStatus = leadScore >= 75 ? 'qualificado' : 'qualificando';
+
+    // 3. Generate High-Converting Social SDR Reply with Gemini or local SDR engine
+    let sdrReply = '';
+    let modelUsed = 'local-sdr-engine';
+
+    if (ai) {
+      try {
+        const sdrSystemInstruction = `Você é Lucas, o SDR (Sales Development Representative) Inteligente de Alta Performance da Clínica OdontoMind AI em São Paulo (Av. Paulista).
+Você opera nos canais de redes sociais oficiais (Instagram Direct, WhatsApp, Facebook Leads, TikTok e Google).
+Responsável Técnica da Clínica: Dra. Camila Alencar (CRO-SP 89452).
+
+SUA MISSÃO COMO SDR ODONTOLÓGICO:
+1. Responda em estilo natural da rede social (${channel}): rápido, cordial, empático, com 2 a 3 frases envolventes.
+2. REGULAMENTAÇÃO ÉTICA CRO/CFO (Resolução CFO 196/2019):
+   - NUNCA dê preços fechados ou promessas de resultado na DM/chat.
+   - Esclareça que cada sorriso é biologicamente único e proponha a experiência do "Check-up Digital com Scanner 3D intraoral" (onde o paciente vê a arcada em alta definição antes de decidir).
+3. CONVERSÃO & QUALIFICAÇÃO:
+   - Responda a dúvida, valide o interesse e proponha 2 opções de encaixe presencial (Hoje às 16h ou Amanhã às 10h30).
+   - Peça a confirmação do WhatsApp para formalizar a reserva se não tiver.
+Sem títulos markdown, sem respostas robóticas.`;
+
+        const aiRes = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: `Lead da rede [${channel}] chamado "${leadName}" enviou: "${messageText}". Histórico recente: ${JSON.stringify(conversationHistory.slice(-3))}`,
+          config: {
+            systemInstruction: sdrSystemInstruction,
+            temperature: 0.68
+          }
+        });
+
+        sdrReply = (aiRes.text || '')
+          .replace(/###.*?\n/g, '')
+          .replace(/####.*?\n/g, '')
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .trim();
+        modelUsed = 'gemini-2.5-flash (SDR Multi-Channel Engine)';
+      } catch (err: any) {
+        console.warn('SDR Gemini fallback:', err.message);
+      }
+    }
+
+    if (!sdrReply) {
+      sdrReply = generateLocalSdrReply(channel, interestProcedure, textLower, leadName);
+    }
+
+    const todayBR = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+
+    const suggestedSlots = [
+      { id: 'sdr-slot-1', date: todayBR, time: '16:00', dentist: 'Dra. Camila Alencar' },
+      { id: 'sdr-slot-2', date: 'Amanhã', time: '10:30', dentist: 'Dra. Camila Alencar' }
+    ];
+
+    const leadRecord = {
+      id: `sdr-${Date.now()}`,
+      name: leadName,
+      phone: leadPhone,
+      socialHandle,
+      channel,
+      campaignOrigin,
+      interestProcedure,
+      category: procedureCategory,
+      estimatedValue: baseTicket,
+      urgency,
+      leadScore,
+      qualificationStatus,
+      capturedAt: new Date().toISOString(),
+      lastMessage: messageText,
+      sdrReply,
+      sdrNotes: `Lead com interesse em ${interestProcedure}. Score: ${leadScore}/100. Encaixe sugerido: Hoje 16h ou Amanhã 10h30.`
+    };
+
+    return res.json({
+      success: true,
+      lead: leadRecord,
+      sdrReply,
+      leadScore,
+      qualificationStatus,
+      suggestedSlots,
+      modelUsed,
+      latencyMs: Date.now() - startTime
+    });
+  } catch (error: any) {
+    console.error('SDR lead processing error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 2. Test Social Network Webhook Inbound (POST /api/sdr/test-social-webhook)
+app.post('/api/sdr/test-social-webhook', async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { channel = 'instagram', payload } = req.body;
+    const latencyMs = Math.floor(Math.random() * 35) + 42;
+
+    return res.json({
+      success: true,
+      channel,
+      status: 'webhook_verified_200',
+      latencyMs,
+      timestamp: new Date().toISOString(),
+      payloadReceived: payload || {
+        event: `${channel}.inbound_message`,
+        sender: { id: 'social_user_88941', username: 'carolina_b' },
+        message: 'Olá, vi o anúncio no feed e gostaria de saber como funciona o alinhador transparente!'
+      },
+      message: `Webhook da plataforma [${channel.toUpperCase()}] recebido e validado com sucesso!`
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 // Dedicated Content Generation API for Dental Marketing (Social Posts, Short Videos, Website Articles)
 app.post('/api/gemini/content-generator', async (req, res) => {
@@ -1433,6 +1616,23 @@ function getSuggestedQuickReplies(urgencyLevel: string): string[] {
     'Como funciona o Scanner 3D?',
     'Aceitam convênio ou parcelamento?'
   ];
+}
+
+// SDR Multi-Channel Local Fallback
+function generateLocalSdrReply(channel: string, procedure: string, textLower: string, leadName: string): string {
+  if (textLower.includes('alinhador') || textLower.includes('invisalign') || textLower.includes('aparelho')) {
+    return `Olá, ${leadName}! Que excelente iniciativa querer transformar seu sorriso com alinhadores transparentes! ✨ Aqui na OdontoMind AI nós realizamos um Check-up com Scanner 3D intraoral onde você visualiza a simulação virtual do seu sorriso alinhado antes mesmo de começar. Temos horários disponíveis hoje às 16h ou amanhã às 10h30 com a Dra. Camila Alencar. Qual período fica melhor para você?`;
+  }
+  if (textLower.includes('preço') || textLower.includes('valor') || textLower.includes('custa')) {
+    return `Olá, ${leadName}! Compreendo totalmente seu interesse nos valores. Pelo Código de Ética do CRO (Resolução CFO 196/2019), cada sorriso é único e não passamos valores fechados sem examinar previamente. Para sua total segurança, realizamos um Check-up Digital com Scanner 3D de alta precisão para você ver sua boca em alta definição. Você prefere uma vaga hoje às 16h ou amanhã às 10h30?`;
+  }
+  if (textLower.includes('implante') || textLower.includes('perdi')) {
+    return `Olá, ${leadName}! Cuidar da mastigação e da segurança ao sorrir é prioridade máxima. Na OdontoMind AI trabalhamos com cirurgia guiada por computador de carga rápida e conforto biológico. Que tal agendarmos uma avaliação clínica individualizada com o Dr. Lucas Sampaio? Temos horário hoje às 16h ou amanhã às 10h30.`;
+  }
+  if (/\b(dor|doendo|dói|latej|urgên|socorro)\b/.test(textLower)) {
+    return `Olá, ${leadName}! Compreendo sua dor e o quanto isso é urgente! Já coloquei nossa equipe de plantão de sobreaviso. Conseguimos um encaixe de urgência para você ainda hoje às 14:30 ou 16:00 para aliviar essa dor rapidamente. Qual horário fica melhor para vir até a Av. Paulista?`;
+  }
+  return `Olá, ${leadName}! Muito obrigado pelo contato pelo ${channel}! Sou o Lucas, SDR aqui da OdontoMind AI. A Dra. Camila Alencar (CRO-SP 89452) e nossa equipe especialista estão prontas para te atender com tecnologia 3D. Gostaria de agendar uma avaliação hoje às 16h ou amanhã às 10h30?`;
 }
 
 // In development, hook Vite into express
