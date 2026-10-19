@@ -1,0 +1,6 @@
+{
+  "name": "OdontoMind AI - Plataforma & Mapa de Inovação Odontológica",
+  "description": "Ecossistema tecnológico para clínicas odontológicas: mapa estratégico, CRM integrado, agentes de IA para marketing ético em conformidade com o CRO e automações clínicas inteligentes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

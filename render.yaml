@@ -1,0 +1,29 @@
+# Render Blueprint Specification
+# Mais informações: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: odontomind-ai
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: GEMINI_API_KEY
+        sync: false # Preencher no painel do Render com a sua chave Gemini AI
+      - key: APP_URL
+        sync: false # Opcional: Render preenche automaticamente com a URL .onrender.com
+      - key: META_WEBHOOK_VERIFY_TOKEN
+        value: odontomind_secure_meta_token_2026 # Token de verificação do Webhook no Meta for Developers
+      - key: META_PHONE_NUMBER_ID
+        sync: false # ID do Número no WhatsApp Cloud API (opcional para envio direto)
+      - key: META_WABA_ID
+        sync: false # WhatsApp Business Account ID (opcional)
+      - key: META_ACCESS_TOKEN
+        sync: false # Token de Acesso de Usuário do Sistema da Meta (opcional)
