@@ -1109,6 +1109,184 @@ app.post('/api/sdr/test-social-webhook', async (req, res) => {
   }
 });
 
+// ==========================================
+// OMNIROUTE™ & MULTI-AGENT ORCHESTRATION ENGINE
+// ==========================================
+
+// 1. OmniRoute Dispatcher (POST /api/omniroute/dispatch)
+app.post('/api/omniroute/dispatch', async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { 
+      channel = 'whatsapp', 
+      input = '', 
+      agentId, 
+      sourceUserName = 'Paciente',
+      context = {} 
+    } = req.body;
+
+    if (!input || !input.trim()) {
+      return res.status(400).json({ success: false, error: 'Input de mensagem obrigatório.' });
+    }
+
+    // Dynamic Intent Routing if agentId is not specified or auto
+    let targetAgentId = agentId;
+    if (!targetAgentId || targetAgentId === 'auto') {
+      const lower = input.toLowerCase();
+      if (/\b(dor|dores|doendo|dói|doi|latejando|quebrei|fraturei|sangrando|inchaço|abcesso|socorro|urgente|emergência)\b|não aguento/i.test(lower)) {
+        targetAgentId = 'agent_triage';
+      } else if (/\b(post|roteiro|vídeo|video|reels|tiktok|carrossel|conteúdo|copy|stories)\b/i.test(lower)) {
+        targetAgentId = 'agent_content';
+      } else if (/\b(agendar|marcar|horário|horario|data|vaga|agenda|disponibilidade)\b/i.test(lower)) {
+        targetAgentId = 'agent_scheduler';
+      } else if (/\b(extraí|extração|implantei|cirurgia|pontos|remédio|antibiótico|pós-op|pós-operatório)\b/i.test(lower)) {
+        targetAgentId = 'agent_postop';
+      } else if (/\b(cro|ética|cfo|preço fechado|antes e depois|anúncio)\b/i.test(lower)) {
+        targetAgentId = 'agent_cro';
+      } else if (/\b(limpeza|profilaxia|retorno|aniversário|checkup|prevenção)\b/i.test(lower)) {
+        targetAgentId = 'agent_retention';
+      } else if (/\b(estacionamento|convênio|endereço|localização|chegar|onde fica)\b/i.test(lower)) {
+        targetAgentId = 'agent_support';
+      } else {
+        targetAgentId = 'agent_sdr';
+      }
+    }
+
+    let agentRole = 'sdr_qualification';
+    let agentName = 'SDR Qualificador';
+    let systemInstruction = '';
+
+    switch (targetAgentId) {
+      case 'agent_content':
+        agentRole = 'social_content';
+        agentName = 'Criador de Conteúdo Social';
+        systemInstruction = `Você é o Agente de Criação de Conteúdo da OdontoMind AI.
+Crie conteúdo de alto engajamento para a rede ${channel}.
+Regras CRO (CFO 196/2019): Sem sensacionalismo, sem preços fixos, sempre citar RT Dra. Camila Alencar CRO-SP 89452.
+Entregue em formato pronto para publicação.`;
+        break;
+
+      case 'agent_triage':
+        agentRole = 'clinical_triage';
+        agentName = 'Triagem Clínica & Urgência';
+        systemInstruction = `Você é a IA de Triagem Clínica da OdontoMind AI.
+Classifique a queixa do paciente em urgência clínica (dor aguda, trauma, sangramento) e recomende acolhimento imediato.
+NÃO prescreva medicamentos controlados. Priorize encaminhamento para avaliação presencial.`;
+        break;
+
+      case 'agent_cro':
+        agentRole = 'cro_compliance';
+        agentName = 'Guardião de Compliance CRO';
+        systemInstruction = `Você é o Auditor Jurídico e Ético da OdontoMind AI.
+Avalie o texto recebido frente à Resolução CFO 196/2019 e LGPD.
+Identifique violações (preços na internet, promessa de resultado) ou confirme aprovação 100%.`;
+        break;
+
+      case 'agent_scheduler':
+        agentRole = 'smart_scheduling';
+        agentName = 'Agendador Inteligente';
+        systemInstruction = `Você é o Agente de Agendamento da OdontoMind AI.
+Sugira 2 horários convenientes para consulta inicial (Check-up Digital com Scanner 3D).
+Mantenha tom humanizado, ágil e acolhedor.`;
+        break;
+
+      case 'agent_postop':
+        agentRole = 'post_op_care';
+        agentName = 'Pós-Operatório & Recuperação';
+        systemInstruction = `Você é o Agente de Suporte Pós-Operatório da OdontoMind AI.
+Oriente o paciente operado com repouso, compressa de gelo nas primeiras 24h, higiene suave e atenção a sinais de alerta.`;
+        break;
+
+      case 'agent_retention':
+        agentRole = 'retention_ltv';
+        agentName = 'Retenção, Check-ups & LTV';
+        systemInstruction = `Você é o Agente de Relacionamento e Prevenção da OdontoMind AI.
+Convide o paciente para o check-up preventivo de 6 meses com foco em longevidade do sorriso e prevenção precoce.`;
+        break;
+
+      case 'agent_support':
+        agentRole = 'customer_support';
+        agentName = 'Atendimento Geral & Recepção';
+        systemInstruction = `Você é o Atendente Geral da OdontoMind AI.
+Esclareça dúvidas práticas sobre a clínica (endereço na Av. Paulista, estacionamento gratuito com manobrista, formas de pagamento).`;
+        break;
+
+      default: // agent_sdr
+        agentRole = 'sdr_qualification';
+        agentName = 'SDR Qualificador de Leads';
+        systemInstruction = `Você é o SDR Inteligente da OdontoMind AI para o canal ${channel}.
+Acolha o lead chamado "${sourceUserName}", responda com empatia e encaminhe para a experiência do Check-up Digital 3D sem prometer preços fechados (CRO 196/2019).`;
+        break;
+    }
+
+    let outputText = '';
+    let modelUsed = 'omniroute-local-engine';
+    let croApproved = true;
+
+    if (ai) {
+      try {
+        const aiRes = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: `[CANAL: ${channel.toUpperCase()}] Interagente: ${sourceUserName}. Mensagem: "${input}".`,
+          config: {
+            systemInstruction,
+            temperature: 0.7
+          }
+        });
+
+        outputText = (aiRes.text || '')
+          .replace(/###.*?\n/g, '')
+          .replace(/####.*?\n/g, '')
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .trim();
+        modelUsed = 'gemini-2.5-flash (OmniRoute Mesh)';
+      } catch (geminiError: any) {
+        console.warn('OmniRoute Gemini Fallback:', geminiError.message);
+      }
+    }
+
+    // Fallback se necessário
+    if (!outputText) {
+      outputText = `Olá ${sourceUserName}! Mensagem recebida pelo canal ${channel}. O agente ${agentName} processou sua solicitação: atendimento humanizado pronto para conectar com a equipe da Dra. Camila Alencar (CRO-SP 89452).`;
+    }
+
+    // Avaliação automática de CRO
+    if (/(grátis|gratuito|promoção imperdível|preço fixo r\$|100% garantido|resultado garantido)/i.test(outputText)) {
+      croApproved = false;
+    }
+
+    const latencyMs = Date.now() - startTime;
+
+    return res.json({
+      success: true,
+      agentId: targetAgentId,
+      agentName,
+      agentRole,
+      channel,
+      output: outputText,
+      croApproved,
+      modelUsed,
+      latencyMs,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error('OmniRoute dispatch error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 2. OmniRoute Status & Mesh Config (GET /api/omniroute/config)
+app.get('/api/omniroute/config', (req, res) => {
+  return res.json({
+    success: true,
+    engine: 'OmniRoute™ 2026',
+    status: 'online',
+    activeChannels: ['whatsapp', 'instagram', 'facebook', 'tiktok', 'webchat', 'telegram', 'sms', 'email'],
+    connectedAgentsCount: 8,
+    geminiStatus: ai ? 'connected' : 'simulation_fallback',
+    webhookBaseUrl: '/api/omniroute'
+  });
+});
 
 // Dedicated Content Generation API for Dental Marketing (Social Posts, Short Videos, Website Articles)
 app.post('/api/gemini/content-generator', async (req, res) => {

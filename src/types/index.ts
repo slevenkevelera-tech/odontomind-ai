@@ -1,15 +1,16 @@
 export type TabType = 
   | 'crm' 
-  | 'scheduling' 
-  | 'automations'
   | 'sdr'
+  | 'automations'
+  | 'engagement_reports' 
+  | 'scheduling' 
   | 'content_agents' 
   | 'chatbot' 
-  | 'engagement_reports' 
-  | 'roadmap' 
   | 'whatsapp' 
+  | 'roadmap' 
   | 'services' 
-  | 'cro';
+  | 'cro'
+  | 'omniroute';
 
 export type SocialPlatform = 'instagram' | 'whatsapp' | 'facebook' | 'tiktok' | 'google';
 
@@ -360,3 +361,71 @@ export interface ToastNotification {
   actionTab?: TabType;
   read?: boolean;
 }
+
+// ==========================================
+// OMNIROUTE & MULTI-AGENT ARCHITECTURE TYPES
+// ==========================================
+
+export type OmniChannel = 
+  | 'whatsapp' 
+  | 'instagram' 
+  | 'facebook' 
+  | 'tiktok' 
+  | 'webchat' 
+  | 'telegram' 
+  | 'sms' 
+  | 'email' 
+  | 'crm_internal';
+
+export type OmniAgentRole = 
+  | 'sdr_qualification'
+  | 'social_content'
+  | 'clinical_triage'
+  | 'cro_compliance'
+  | 'smart_scheduling'
+  | 'post_op_care'
+  | 'retention_ltv'
+  | 'customer_support';
+
+export interface OmniAgentDefinition {
+  id: string;
+  name: string;
+  role: OmniAgentRole;
+  description: string;
+  supportedChannels: OmniChannel[];
+  model: string;
+  systemPromptHint: string;
+  active: boolean;
+  totalTasksProcessed: number;
+  successRate: number;
+  avgLatencyMs: number;
+  specialtyBadge: string;
+}
+
+export interface OmniRouteDemand {
+  id: string;
+  channel: OmniChannel;
+  sourceUserName?: string;
+  sourceContact?: string;
+  rawInput: string;
+  detectedIntent: string;
+  assignedAgentId: string;
+  priority: 'baixa' | 'normal' | 'alta' | 'critica';
+  status: 'queued' | 'routing' | 'processing' | 'completed' | 'failed' | 'human_handoff';
+  agentOutput?: string;
+  croApproved?: boolean;
+  executionTimeMs?: number;
+  timestamp: string;
+  metadata?: Record<string, any>;
+}
+
+export interface OmniRouteConfig {
+  enabled: boolean;
+  defaultModel: string;
+  fallbackToHumanOnDoubt: boolean;
+  autoCroValidation: boolean;
+  autoCrmSync: boolean;
+  crossChannelMemory: boolean;
+  webhookBaseUrl: string;
+}
+

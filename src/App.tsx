@@ -13,6 +13,7 @@ import { WhatsAppSimulator } from './components/WhatsAppSimulator';
 import { ServicesGuide } from './components/ServicesGuide';
 import { CroEthicsGuide } from './components/CroEthicsGuide';
 import { AutomationSkillsHub } from './components/AutomationSkillsHub';
+import { OmniRouteHub } from './components/OmniRouteHub';
 import { NewPatientModal } from './components/NewPatientModal';
 import { RenderDeployModal } from './components/RenderDeployModal';
 import { GitHubPushModal } from './components/GitHubPushModal';
@@ -422,6 +423,13 @@ export default function App() {
         {activeTab === 'chatbot' && <GeminiChatbot />}
 
         {activeTab === 'whatsapp' && <WhatsAppSimulator onAddToast={addToast} />}
+
+        {activeTab === 'omniroute' && (
+          <OmniRouteHub
+            onAddToast={addToast}
+            onNavigateToTab={(tab) => setActiveTab(tab)}
+          />
+        )}
 
         {activeTab === 'roadmap' && (
           <RoadmapMap onNavigateTab={(tab) => setActiveTab(tab)} />
