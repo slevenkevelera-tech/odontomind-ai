@@ -171,7 +171,7 @@ export default function App() {
       message: `${newPatient.name} entrou na esteira do CRM para ${newPatient.treatment}. Triagem IA prévia gerada.`,
       patientName: newPatient.name,
       patientId: newPatient.id,
-      actionLabel: 'Ver no Pipeline',
+      actionLabel: 'Ver no Funil de Vendas',
       actionTab: 'crm'
     });
   };

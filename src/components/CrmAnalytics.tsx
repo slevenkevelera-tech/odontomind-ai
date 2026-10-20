@@ -125,12 +125,12 @@ export const CrmAnalytics: React.FC<CrmAnalyticsProps> = ({ patients, appointmen
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-500 font-medium">Pipeline Total Ativo</p>
+            <p className="text-xs text-slate-500 font-medium">Funil de Vendas Ativo</p>
             <p className="text-xl font-heading font-extrabold text-slate-900 mt-1">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(totalPipelineRevenue)}
             </p>
             <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5 mt-0.5">
-              {patients.length > 0 ? `${patients.length} pacientes no pipeline` : 'Aguardando primeiros pacientes'}
+              {patients.length > 0 ? `${patients.length} pacientes no funil de vendas` : 'Aguardando primeiros pacientes'}
             </span>
           </div>
           <div className="w-11 h-11 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
@@ -237,7 +237,7 @@ export const CrmAnalytics: React.FC<CrmAnalyticsProps> = ({ patients, appointmen
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h3 className="text-sm font-heading font-bold text-slate-900">
-                Receita Estimada por Estágio do Pipeline (R$)
+                Receita Estimada por Estágio do Funil de Vendas (R$)
               </h3>
               <p className="text-xs text-slate-500">
                 Valor financeiro em cada etapa de negociação e execução

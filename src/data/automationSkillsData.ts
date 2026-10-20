@@ -219,9 +219,9 @@ export const initialAutomationSkills: AutomationSkill[] = [
         id: 'step-1',
         order: 1,
         type: 'trigger',
-        title: 'Estágio do Pipeline: Proposta Apresentada',
+        title: 'Estágio do Funil de Vendas: Proposta Apresentada',
         description: 'Disparado quando paciente permanece mais de 7 dias na coluna de Proposta',
-        badge: 'Pipeline CRM'
+        badge: 'Funil de Vendas'
       },
       {
         id: 'step-2',

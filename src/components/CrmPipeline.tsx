@@ -118,7 +118,7 @@ export const CrmPipeline: React.FC<CrmPipelineProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-500 font-medium">Pipeline Total Ativo</p>
+            <p className="text-xs text-slate-500 font-medium">Funil de Vendas Ativo</p>
             <p className="text-lg sm:text-xl font-heading font-extrabold text-slate-900 mt-1">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(totalValue)}
             </p>
@@ -179,7 +179,7 @@ export const CrmPipeline: React.FC<CrmPipelineProps> = ({
               Nenhum paciente cadastrado ainda
             </h4>
             <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-              Os dados fictícios foram removidos. Agora, apenas os dados reais que você cadastrar ou que o SDR capturar pelas redes sociais aparecerão aqui no pipeline.
+              Os dados fictícios foram removidos. Agora, apenas os dados reais que você cadastrar ou que o SDR capturar pelas redes sociais aparecerão aqui no funil de vendas.
             </p>
           </div>
           <button
