@@ -200,29 +200,33 @@ export default function App() {
       googleCalendarId: dentist.calendarId,
       googleSyncStatus: newApt.googleSyncStatus || 'pending'
     };
-    setAppointments((prev) => [withDentist, ...prev]);
-    addToast({
-      type: 'success',
-      title: 'Nova Consulta Agendada',
-      message: `${withDentist.patientName} agendado(a) com ${withDentist.dentist} para ${withDentist.date} as ${withDentist.time}.`,
-      actionLabel: 'Ver Agenda',
-      actionTab: 'scheduling'
-    });
+    setAppointments((prev) => [withDentist, ...prev.filter((apt) => apt.id !== withDentist.id)]);
 
-    void syncAppointmentToGoogle(withDentist, dentist).then((result) => {
-      setAppointments((prev) =>
-        prev.map((apt) =>
-          apt.id === withDentist.id
-            ? {
-                ...apt,
-                googleEventId: result.googleEventId,
-                googleHtmlLink: result.googleHtmlLink,
-                googleSyncStatus: result.status
-              }
-            : apt
-        )
-      );
-    });
+    const handledByPipeline = withDentist.patientId === 'whatsapp-simulator';
+    if (!handledByPipeline) {
+      addToast({
+        type: 'success',
+        title: 'Nova Consulta Agendada',
+        message: `${withDentist.patientName} agendado(a) com ${withDentist.dentist} para ${withDentist.date} as ${withDentist.time}.`,
+        actionLabel: 'Ver Agenda',
+        actionTab: 'scheduling'
+      });
+
+      void syncAppointmentToGoogle(withDentist, dentist).then((result) => {
+        setAppointments((prev) =>
+          prev.map((apt) =>
+            apt.id === withDentist.id
+              ? {
+                  ...apt,
+                  googleEventId: result.googleEventId,
+                  googleHtmlLink: result.googleHtmlLink,
+                  googleSyncStatus: result.status
+                }
+              : apt
+          )
+        );
+      });
+    }
   };
 
   const handleUpdateAppointmentStatus = (id: string, status: Appointment['status']) => {
@@ -400,12 +404,14 @@ export default function App() {
       />
 
       <main
-        className={`flex-1 w-full pl-3 md:pl-60 lg:pl-64 transition-[padding] duration-300 ease-out motion-reduce:transition-none ${
+        id="conteudo-principal"
+        className={`flex-1 w-full pl-3 md:pl-[18.5rem] lg:pl-80 ${
           isWhatsAppFocus
-            ? 'max-w-none pr-14 sm:pr-16 py-2 sm:py-3'
-            : 'max-w-none pr-4 sm:pr-6 lg:pr-8 py-6 sm:py-8'
+            ? 'pr-4 sm:pr-6 py-3 sm:py-4'
+            : 'pr-4 sm:pr-6 lg:pr-10 py-6 sm:py-8'
         }`}
       >
+        <div className={isWhatsAppFocus ? 'w-full max-w-6xl mx-auto' : 'w-full max-w-7xl mx-auto'}>
         {activeTab === 'crm' && (
           <CrmPipeline
             patients={patients}
@@ -455,7 +461,9 @@ export default function App() {
 
         {activeTab === 'chatbot' && <GeminiChatbot />}
 
-        {activeTab === 'whatsapp' && <WhatsAppSimulator onAddToast={addToast} />}
+        {activeTab === 'whatsapp' && (
+          <WhatsAppSimulator onAddToast={addToast} onAddAppointment={handleAddAppointment} />
+        )}
 
         {activeTab === 'omniroute' && (
           <OmniRouteHub
@@ -471,6 +479,7 @@ export default function App() {
         {activeTab === 'services' && <ServicesGuide />}
 
         {activeTab === 'cro' && <CroEthicsGuide />}
+        </div>
       </main>
 
       {/* Add Patient Lead Modal */}
@@ -499,7 +508,7 @@ export default function App() {
         }}
       />
 
-      <footer className={`bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-8 pl-3 md:pl-60 lg:pl-64 transition-all duration-300 ease-out motion-reduce:transition-none ${
+      <footer className={`bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-8 pl-3 md:pl-[18.5rem] lg:pl-80 ${
         isWhatsAppFocus ? 'hidden' : 'mt-12'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">

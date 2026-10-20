@@ -281,9 +281,11 @@ export interface ClinicalTriageEvaluation {
   suggestedSlots: Array<{
     id: string;
     date: string;
+    isoDate?: string;
     time: string;
     period: string;
     dentist: string;
+    dentistId?: string;
     procedure: string;
     chair: string;
   }>;
@@ -333,8 +335,10 @@ export interface ChatMessage {
     slots: Array<{
       id: string;
       date: string;
+      isoDate?: string;
       time: string;
       dentist: string;
+      dentistId?: string;
       procedure: string;
     }>;
     selectedSlot?: string;

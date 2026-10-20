@@ -6,6 +6,13 @@ import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { GoogleGenAI } from '@google/genai';
+import {
+  buildSuggestedSlots,
+  matchConfirmedSlot,
+  isDuplicateBooking,
+  buildAppointmentFromSlot,
+  generateBookingReply
+} from './src/lib/carolBooking.ts';
 
 dotenv.config();
 
@@ -714,7 +721,10 @@ app.post('/api/meta/chat-pipeline', async (req, res) => {
     const { 
       message, 
       conversationHistory = [], 
-      patientName = 'Paciente', 
+      patientName = 'Paciente',
+      patientPhone = '(11) 90000-0000',
+      confirmSlotId,
+      offeredSlots,
       metaConfig,
       activeHeuristics = []
     } = req.body;
@@ -774,35 +784,82 @@ app.post('/api/meta/chat-pipeline', async (req, res) => {
       croRulesChecked.push('Apresentação de escaneamento digital 3D prévio para planejamento seguro');
     }
 
-    // Stage 3: Real-time Dynamic Scheduling Slots
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    const suggestedSlots = buildSuggestedSlots(new Date(), urgencyLevel);
+    const slotsForMatch = Array.isArray(offeredSlots) && offeredSlots.length > 0 ? offeredSlots : suggestedSlots;
+    const confirmedSlot = matchConfirmedSlot({
+      message,
+      confirmSlotId,
+      slots: slotsForMatch
+    });
 
-    const formatSlotDate = (d: Date) => d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    let booking: any = { confirmed: false };
+    if (confirmedSlot) {
+      const existingStore = readCalendarStore();
+      const duplicate = isDuplicateBooking(existingStore, {
+        dentistId: confirmedSlot.dentistId,
+        date: confirmedSlot.isoDate,
+        time: confirmedSlot.time,
+        patientName
+      });
+      const bookingUrgency =
+        confirmedSlot.time === '14:30'
+          ? 'emergencia_dor'
+          : confirmedSlot.dentistId === 'lucas-sampaio'
+            ? 'pos_operatorio'
+            : urgencyLevel;
+      const existingMatch = existingStore.find((item) =>
+        item.dentistId === confirmedSlot.dentistId &&
+        item.date === confirmedSlot.isoDate &&
+        item.time === confirmedSlot.time &&
+        item.patientName === patientName
+      );
+      const appointment = duplicate && existingMatch
+        ? {
+            ...buildAppointmentFromSlot({
+              slot: confirmedSlot,
+              urgencyLevel: bookingUrgency,
+              patientName,
+              patientPhone
+            }),
+            id: existingMatch.id,
+            googleEventId: existingMatch.googleEventId,
+            googleHtmlLink: existingMatch.googleHtmlLink,
+            googleSyncStatus: existingMatch.googleEventId ? 'synced' as const : 'local' as const
+          }
+        : buildAppointmentFromSlot({
+            slot: confirmedSlot,
+            urgencyLevel: bookingUrgency,
+            patientName,
+            patientPhone
+          });
 
-    const suggestedSlots = [
-      {
-        id: 'slot-today',
-        date: formatSlotDate(today),
-        time: urgencyLevel === 'emergencia_dor' ? '14:30 (Encaixe Urgência)' : '16:00',
-        period: 'Tarde',
-        dentist: urgencyLevel === 'pos_operatorio' ? 'Dr. Lucas Sampaio (Cirurgião)' : 'Dra. Camila Alencar',
-        procedure: urgencyLevel === 'emergencia_dor' ? 'Atendimento de Urgência & Alívio de Dor' : 'Check-up Digital com Scanner 3D',
-        chair: 'Cadeira 02 - Consultório Master'
-      },
-      {
-        id: 'slot-tomorrow',
-        date: formatSlotDate(tomorrow),
-        time: '10:30',
-        period: 'Manhã',
-        dentist: 'Dra. Camila Alencar',
-        procedure: 'Avaliação Individualizada & Escaneamento 3D',
-        chair: 'Cadeira 01 - Scanner iTero'
+      if (!duplicate) {
+        const syncResult = await syncCalendarEvent(appointment, {
+          id: appointment.dentistId,
+          name: appointment.dentist,
+          calendarId: appointment.googleCalendarId
+        });
+        appointment.googleSyncStatus = syncResult.status;
+        appointment.googleEventId = syncResult.googleEventId;
+        appointment.googleHtmlLink = syncResult.googleHtmlLink;
+        booking = {
+          confirmed: true,
+          appointment,
+          googleSyncStatus: syncResult.status,
+          googleHtmlLink: syncResult.googleHtmlLink,
+          message: syncResult.message
+        };
+      } else {
+        booking = {
+          confirmed: true,
+          appointment,
+          googleSyncStatus: appointment.googleSyncStatus || 'local',
+          googleHtmlLink: appointment.googleHtmlLink,
+          message: 'Horário já reservado nesta sessão.'
+        };
       }
-    ];
+    }
 
-    // Build adaptive heuristics context for Gemini
     const heuristicsContext = (activeHeuristics && activeHeuristics.length > 0)
       ? activeHeuristics.map((h: any, i: number) => `Regra #${i+1} [${h.categoryLabel || h.category}]: Gatilho "${h.triggerPattern}" -> Estratégia: "${h.learnedStrategy}"`).join('\n')
       : 'Estratégia padrão: acolher com empatia clínica, não dar preços fechados sem exame presencial e oferecer 2 opções de horário de cadeira.';
@@ -810,7 +867,14 @@ app.post('/api/meta/chat-pipeline', async (req, res) => {
     let replyText = '';
     let modelUsed = 'local-clinical-engine';
 
-    if (ai) {
+    if (booking.confirmed && confirmedSlot) {
+      replyText = generateBookingReply({
+        slot: confirmedSlot,
+        patientName,
+        duplicate: Boolean(booking.message && /já reservado/i.test(booking.message))
+      });
+      modelUsed = 'local-booking-engine';
+    } else if (ai) {
       try {
         const systemInstruction = `Você é Carol, recepcionista humana da Clínica OdontoMind AI (Av. Paulista, São Paulo).
 RT: Dra. Camila Alencar · CRO-SP 89452. Canal: WhatsApp Business.
@@ -896,7 +960,7 @@ Responda SOMENTE o texto que Carol enviaria agora no WhatsApp.`;
       learningInsightExtracted: learnedInsight?.title
     };
 
-    const suggestedQuickReplies = getSuggestedQuickReplies(urgencyLevel);
+    const suggestedQuickReplies = booking.confirmed ? [] : getSuggestedQuickReplies(urgencyLevel);
 
     return res.json({
       success: true,
@@ -905,6 +969,7 @@ Responda SOMENTE o texto que Carol enviaria agora no WhatsApp.`;
       suggestedSlots,
       suggestedQuickReplies,
       learnedInsight,
+      booking,
       modelUsed,
       executionTimeMs: Date.now() - startTime
     });
@@ -1936,6 +2001,77 @@ app.get('/api/calendar/events', (req, res) => {
   return res.json({ success: true, appointments });
 });
 
+async function syncCalendarEvent(appointment: any, dentist?: { id?: string; name?: string; calendarId?: string }) {
+  const dentistId = dentist?.id || appointment.dentistId || 'camila-alencar';
+  const calendarId = dentist?.calendarId || appointment.googleCalendarId || 'primary';
+  const token = process.env.USER_GOOGLE_CALENDAR_TOKEN;
+  let googleEventId: string | undefined;
+  let googleHtmlLink: string | undefined;
+  let status: 'synced' | 'pending' | 'local' = 'local';
+  let message = 'Consulta registrada na agenda da clinica.';
+
+  if (token) {
+    try {
+      const times = buildGoogleEventTimes(appointment.date, appointment.time, Number(appointment.durationMinutes) || 60);
+      const payload = {
+        summary: `${appointment.patientName} · ${appointment.procedure}`,
+        description: `Paciente: ${appointment.patientName}\nTelefone: ${appointment.patientPhone}\nDentista: ${dentist?.name || appointment.dentist}\nOrigem: OdontoMind AI`,
+        start: { dateTime: times.start, timeZone: 'America/Sao_Paulo' },
+        end: { dateTime: times.end, timeZone: 'America/Sao_Paulo' }
+      };
+      const targetCalendar = encodeURIComponent(calendarId);
+      const googleRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendar}/events`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      const googleData: any = await googleRes.json();
+      if (googleRes.ok && googleData.id) {
+        googleEventId = googleData.id;
+        googleHtmlLink = googleData.htmlLink;
+        status = 'synced';
+        message = 'Consulta gravada na agenda do dentista e no Google Calendar.';
+      } else {
+        status = 'pending';
+        message = googleData.error?.message || 'Google Calendar recusou o evento. Consulta permanece no site.';
+      }
+    } catch (err: any) {
+      status = 'pending';
+      message = err?.message || 'Falha ao falar com o Google Calendar. Consulta permanece no site.';
+    }
+  }
+
+  const storedEvent: StoredCalendarEvent = {
+    id: appointment.id || `apt-${Date.now()}`,
+    dentistId,
+    calendarId,
+    patientName: appointment.patientName,
+    patientPhone: appointment.patientPhone,
+    date: appointment.date,
+    time: appointment.time,
+    durationMinutes: Number(appointment.durationMinutes) || 60,
+    procedure: appointment.procedure,
+    status: appointment.status || 'pending',
+    googleEventId,
+    googleHtmlLink
+  };
+
+  const store = readCalendarStore();
+  const next = [storedEvent, ...store.filter((item) => item.id !== storedEvent.id)];
+  writeCalendarStore(next);
+
+  return {
+    success: true,
+    status,
+    googleEventId,
+    googleHtmlLink,
+    message
+  };
+}
+
 app.post('/api/calendar/sync', async (req, res) => {
   try {
     const { appointment, dentist } = req.body || {};
@@ -1943,74 +2079,8 @@ app.post('/api/calendar/sync', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Consulta incompleta para sincronizar.' });
     }
 
-    const dentistId = dentist?.id || 'camila-alencar';
-    const calendarId = dentist?.calendarId || appointment.googleCalendarId || 'primary';
-    const token = process.env.USER_GOOGLE_CALENDAR_TOKEN;
-    let googleEventId: string | undefined;
-    let googleHtmlLink: string | undefined;
-    let status: 'synced' | 'pending' | 'local' = 'local';
-    let message = 'Consulta registrada na agenda da clinica.';
-
-    if (token) {
-      try {
-        const times = buildGoogleEventTimes(appointment.date, appointment.time, Number(appointment.durationMinutes) || 60);
-        const payload = {
-          summary: `${appointment.patientName} · ${appointment.procedure}`,
-          description: `Paciente: ${appointment.patientName}\nTelefone: ${appointment.patientPhone}\nDentista: ${dentist?.name || appointment.dentist}\nOrigem: OdontoMind AI`,
-          start: { dateTime: times.start, timeZone: 'America/Sao_Paulo' },
-          end: { dateTime: times.end, timeZone: 'America/Sao_Paulo' }
-        };
-        const targetCalendar = encodeURIComponent(calendarId);
-        const googleRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendar}/events`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        const googleData: any = await googleRes.json();
-        if (googleRes.ok && googleData.id) {
-          googleEventId = googleData.id;
-          googleHtmlLink = googleData.htmlLink;
-          status = 'synced';
-          message = 'Consulta gravada na agenda do dentista e no Google Calendar.';
-        } else {
-          status = 'pending';
-          message = googleData.error?.message || 'Google Calendar recusou o evento. Consulta permanece no site.';
-        }
-      } catch (err: any) {
-        status = 'pending';
-        message = err?.message || 'Falha ao falar com o Google Calendar. Consulta permanece no site.';
-      }
-    }
-
-    const storedEvent: StoredCalendarEvent = {
-      id: appointment.id || `apt-${Date.now()}`,
-      dentistId,
-      calendarId,
-      patientName: appointment.patientName,
-      patientPhone: appointment.patientPhone,
-      date: appointment.date,
-      time: appointment.time,
-      durationMinutes: Number(appointment.durationMinutes) || 60,
-      procedure: appointment.procedure,
-      status: appointment.status || 'pending',
-      googleEventId,
-      googleHtmlLink
-    };
-
-    const store = readCalendarStore();
-    const next = [storedEvent, ...store.filter((item) => item.id !== storedEvent.id)];
-    writeCalendarStore(next);
-
-    return res.json({
-      success: true,
-      status,
-      googleEventId,
-      googleHtmlLink,
-      message
-    });
+    const result = await syncCalendarEvent(appointment, dentist);
+    return res.json(result);
   } catch (error: any) {
     return res.status(500).json({ success: false, status: 'error', message: error.message });
   }

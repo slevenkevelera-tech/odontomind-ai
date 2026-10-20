@@ -5,7 +5,8 @@ import {
   ClinicalTriageEvaluation, 
   AgentLearnedHeuristic, 
   AgentBrainState,
-  ToastNotification 
+  ToastNotification,
+  Appointment
 } from '../types';
 import { 
   initialMetaConfig, 
@@ -13,8 +14,6 @@ import {
   sampleMetaWebhooksPayloads 
 } from '../data/metaAgentData';
 import {
-  triggerAiClinicalTriage,
-  confirmAppointmentBooking,
   testMetaWebhookConnection,
   getRenderSyncInfo,
   resolveMetaWebhookPublicUrl
@@ -54,9 +53,10 @@ import {
 
 interface WhatsAppSimulatorProps {
   onAddToast?: (toast: ToastNotification) => void;
+  onAddAppointment?: (appointment: Appointment) => void;
 }
 
-export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast }) => {
+export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast, onAddAppointment }) => {
   // Meta API Configuration State
   const [metaConfig, setMetaConfig] = useState<MetaCloudApiConfig>(() => {
     const saved = localStorage.getItem('odontomind_meta_config');
@@ -182,7 +182,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
   };
 
   // Send message through the real-time AI clinical pipeline
-  const handleSendMessage = async (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string, confirmSlotId?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text) return;
 
@@ -206,6 +206,9 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
           message: text,
           conversationHistory: messages.slice(-8).map(m => ({ role: m.sender, content: m.text })),
           patientName: 'Paciente',
+          patientPhone: '(11) 90000-0000',
+          confirmSlotId,
+          offeredSlots: latestTriage?.suggestedSlots,
           metaConfig,
           activeHeuristics: brainState.heuristics
         })
@@ -267,12 +270,33 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           suggestedQuickReplies: data.suggestedQuickReplies,
           triageEvaluation: data.triage,
-          interactiveBooking: data.suggestedSlots ? {
+          interactiveBooking: data.booking?.confirmed ? undefined : data.suggestedSlots ? {
             slots: data.suggestedSlots
           } : undefined
         };
 
         setMessages(prev => [...prev, agentMsg]);
+
+        if (data.booking?.confirmed && data.booking.appointment) {
+          const booked = data.booking.appointment;
+          const matchedSlotId =
+            confirmSlotId ||
+            data.suggestedSlots?.find((slot: { id: string; time: string; isoDate?: string }) =>
+              slot.time === booked.time && (!slot.isoDate || slot.isoDate === booked.date)
+            )?.id ||
+            booked.id;
+          setBookingConfirmedSlot(matchedSlotId);
+          onAddAppointment?.(booked);
+          onAddToast?.({
+            id: `toast-${Date.now()}`,
+            type: 'success',
+            title: data.booking.googleSyncStatus === 'synced' ? 'Cadeira reservada no Google Calendar' : 'Cadeira Reservada em Tempo Real',
+            message: `${booked.procedure} com ${booked.dentist} em ${booked.date} às ${booked.time}.`,
+            timestamp: 'Agora',
+            actionLabel: 'Ver Agenda',
+            actionTab: 'scheduling'
+          });
+        }
 
         void omniRouteService.dispatchDemand({
           channel: 'whatsapp',
@@ -346,42 +370,9 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
     }
   };
 
-  // Slot confirmation action
-  const handleConfirmSlot = (slot: any) => {
-    setBookingConfirmedSlot(slot.id);
-    const confirmationText = `Perfeito! Confirmo o agendamento para ${slot.date} às ${slot.time} com ${slot.dentist} (${slot.procedure}).`;
-    
-    // Add patient response
-    const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
-      sender: 'user',
-      text: `Quero confirmar o horário de ${slot.time} (${slot.date})!`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setMessages(prev => [...prev, userMsg]);
-    setIsTyping(true);
-
-    setTimeout(() => {
-      const agentMsg: ChatMessage = {
-        id: `a-${Date.now()}`,
-        sender: 'agent',
-        text: `Excelente! Seu agendamento para *${slot.date} às ${slot.time}* com *${slot.dentist}* está formalizado e registrado no nosso prontuário digital com conformidade ética. 🦷✨\n\n📍 Nosso endereço: Av. Paulista, 1842 - Torre Norte, 14º andar.\n\nEnviaremos o lembrete 24h e 2h antes com localização e estacionamento. Estamos ansiosos para cuidar do seu sorriso!`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, agentMsg]);
-      setIsTyping(false);
-
-      if (onAddToast) {
-        onAddToast({
-          id: `toast-${Date.now()}`,
-          type: 'success',
-          title: 'Cadeira Reservada em Tempo Real',
-          message: `${slot.procedure} agendado para ${slot.date} às ${slot.time}.`,
-          timestamp: 'Agora'
-        });
-      }
-    }, 700);
+  const handleConfirmSlot = (slot: { id: string; date: string; time: string }) => {
+    if (bookingConfirmedSlot === slot.id) return;
+    void handleSendMessage(`Quero confirmar o horário de ${slot.time} (${slot.date})!`, slot.id);
   };
 
   // Reset conversation
@@ -405,7 +396,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
   };
 
   return (
-    <div className="h-[calc(100dvh-0.5rem)] sm:h-[calc(100dvh-0.75rem)] flex flex-col animate-fadeIn">
+    <div className="h-[calc(100dvh-4.5rem)] sm:h-[calc(100dvh-5rem)] flex flex-col animate-fadeIn">
       <div className="flex-1 min-h-0 flex gap-2 relative">
         <div className="flex-1 min-w-0 flex justify-center relative">
           <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
@@ -497,8 +488,9 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
                                 return (
                                   <button
                                     key={slot.id}
-                                    onClick={() => handleConfirmSlot(slot)}
-                                    className={`w-full text-left p-2 rounded-lg border text-[11px] transition-all flex items-center justify-between cursor-pointer ${
+                                    onClick={() => !isSelected && handleConfirmSlot(slot)}
+                                    disabled={isSelected}
+                                    className={`w-full text-left p-2 rounded-lg border text-[11px] transition-all flex items-center justify-between ${isSelected ? 'cursor-default' : 'cursor-pointer'} ${
                                       isSelected 
                                         ? 'bg-emerald-50 border-emerald-500 text-emerald-900' 
                                         : 'bg-slate-50 hover:bg-teal-50/60 border-slate-200 text-slate-800'
