@@ -51,8 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   onClearAllNotifications,
   onTriggerDemoToast
 }) => {
-  // Mobile drawer state: Recolhido (collapsed) by default so it never obstructs the user's view
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
 
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: string; desc?: string }[] = [
     { 
@@ -141,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleSelectTab = (tabId: TabType) => {
     setActiveTab(tabId);
-    setIsMobileMenuOpen(false); // Recolhe o menu imediatamente no celular
+    setIsNavMenuOpen(false);
   };
 
   return (
@@ -216,175 +215,141 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden sm:inline">Paciente</span>
             </button>
 
-            {/* Mobile Hamburger / Trigger (Visible only on mobile screens) */}
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="flex md:hidden items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+              onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 font-semibold text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg transition-all cursor-pointer"
               aria-label="Abrir menu de navegação"
-              aria-expanded={isMobileMenuOpen}
+              aria-expanded={isNavMenuOpen}
             >
-              {isMobileMenuOpen ? (
+              {isNavMenuOpen ? (
                 <X className="w-4 h-4 text-rose-400" />
               ) : (
                 <Menu className="w-4 h-4 text-cyan-400" />
               )}
-              <span className="font-bold text-[11px] text-slate-200">Menu</span>
+              <span className="font-bold text-[11px] sm:text-xs text-slate-200">Menu</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* MOBILE ACTIVE TAB BAR (Only on small screens: Compact indicator with dropdown trigger) */}
-      <div className="md:hidden border-t border-slate-800/80 bg-slate-950/90 px-4 py-2 flex items-center justify-between">
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="flex items-center gap-2 text-xs font-semibold text-slate-200 hover:text-white transition-colors cursor-pointer w-full justify-between"
-        >
-          <div className="flex items-center gap-2 truncate">
-            <span className="p-1 rounded bg-slate-800 border border-slate-700 shrink-0">
-              {currentItem.icon}
-            </span>
-            <span className="truncate font-bold text-white text-xs">{currentItem.label}</span>
-            {currentItem.badge && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800 shrink-0">
-                {currentItem.badge}
+      <div className="border-t border-slate-800/80 bg-slate-950/90 px-4 sm:px-6 lg:px-8 py-2">
+        <div className="max-w-7xl mx-auto">
+          <button
+            onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+            className="flex items-center gap-2 text-xs font-semibold text-slate-200 hover:text-white transition-colors cursor-pointer w-full justify-between"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <span className="p-1 rounded bg-slate-800 border border-slate-700 shrink-0">
+                {currentItem.icon}
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1 text-[11px] text-cyan-400 font-medium shrink-0 ml-2">
-            <span>{isMobileMenuOpen ? 'Fechar' : 'Alternar'}</span>
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isMobileMenuOpen ? 'rotate-180' : ''}`} />
-          </div>
-        </button>
+              <span className="truncate font-bold text-white text-xs">{currentItem.label}</span>
+              {currentItem.badge && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800 shrink-0">
+                  {currentItem.badge}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-[11px] text-cyan-400 font-medium shrink-0 ml-2">
+              <span>{isNavMenuOpen ? 'Fechar' : 'Menu'}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isNavMenuOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </button>
+        </div>
       </div>
 
-      {/* MOBILE COLLAPSIBLE DRAWER / SHEET */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-[105px] z-50 bg-slate-950/80 backdrop-blur-md flex flex-col animate-fadeIn">
+      {isNavMenuOpen && (
+        <div className="fixed inset-0 top-[105px] z-50 bg-slate-950/80 backdrop-blur-md flex flex-col animate-fadeIn">
           <div className="bg-slate-900 border-b border-slate-800 shadow-2xl max-h-[calc(100vh-110px)] overflow-y-auto p-4 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div>
-                <p className="text-xs font-bold text-white uppercase tracking-wider">Módulos da Plataforma</p>
-                <p className="text-[11px] text-slate-400">Selecione para navegar (menu recolhe automaticamente)</p>
+            <div className="max-w-7xl mx-auto w-full space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div>
+                  <p className="text-xs font-bold text-white uppercase tracking-wider">Módulos da Plataforma</p>
+                  <p className="text-[11px] text-slate-400">Selecione para navegar (menu recolhe automaticamente)</p>
+                </div>
+                <button
+                  onClick={() => setIsNavMenuOpen(false)}
+                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                  aria-label="Fechar menu"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
-                aria-label="Fechar menu"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Mobile Nav Links List */}
-            <div className="grid grid-cols-1 gap-1.5">
-              {navItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleSelectTab(item.id)}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-gradient-to-r from-cyan-950 to-slate-900 text-cyan-300 border border-cyan-500/50 shadow-sm'
-                        : 'bg-slate-950/70 text-slate-300 hover:bg-slate-800/80 hover:text-white border border-slate-800/70'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg shrink-0 ${
-                        isActive ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-800 text-slate-400'
-                      }`}>
-                        {item.icon}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs sm:text-sm text-white">{item.label}</span>
-                          {item.badge && (
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                              isActive ? 'bg-cyan-400 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'
-                            }`}>
-                              {item.badge}
-                            </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                {navItems.map((item) => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleSelectTab(item.id)}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-gradient-to-r from-cyan-950 to-slate-900 text-cyan-300 border border-cyan-500/50 shadow-sm'
+                          : 'bg-slate-950/70 text-slate-300 hover:bg-slate-800/80 hover:text-white border border-slate-800/70'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg shrink-0 ${
+                          isActive ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {item.icon}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs sm:text-sm text-white">{item.label}</span>
+                            {item.badge && (
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                                isActive ? 'bg-cyan-400 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                              }`}>
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                          {item.desc && (
+                            <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{item.desc}</p>
                           )}
                         </div>
-                        {item.desc && (
-                          <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{item.desc}</p>
-                        )}
                       </div>
-                    </div>
-                    <ChevronRight className={`w-4 h-4 shrink-0 ${isActive ? 'text-cyan-400' : 'text-slate-600'}`} />
-                  </button>
-                );
-              })}
-            </div>
+                      <ChevronRight className={`w-4 h-4 shrink-0 ${isActive ? 'text-cyan-400' : 'text-slate-600'}`} />
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Mobile Footer shortcuts */}
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                CFO 196/2019
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onOpenGitHubModal();
-                  }}
-                  className="px-2.5 py-1 rounded bg-slate-800 text-slate-300 hover:text-white cursor-pointer text-[11px]"
-                >
-                  GitHub
-                </button>
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onOpenRenderModal();
-                  }}
-                  className="px-2.5 py-1 rounded bg-slate-800 text-cyan-300 hover:text-white cursor-pointer text-[11px]"
-                >
-                  Render
-                </button>
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  CFO 196/2019
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setIsNavMenuOpen(false);
+                      onOpenGitHubModal();
+                    }}
+                    className="px-2.5 py-1 rounded bg-slate-800 text-slate-300 hover:text-white cursor-pointer text-[11px]"
+                  >
+                    GitHub
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsNavMenuOpen(false);
+                      onOpenRenderModal();
+                    }}
+                    className="px-2.5 py-1 rounded bg-slate-800 text-cyan-300 hover:text-white cursor-pointer text-[11px]"
+                  >
+                    Render
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-          {/* Backdrop click to close */}
-          <div 
-            className="flex-1 bg-transparent cursor-pointer" 
-            onClick={() => setIsMobileMenuOpen(false)} 
+          <div
+            className="flex-1 bg-transparent cursor-pointer"
+            onClick={() => setIsNavMenuOpen(false)}
           />
         </div>
       )}
-
-      {/* DESKTOP NAVIGATION BAR (Hidden on Mobile, Visible on md: screens and above) */}
-      <div className="hidden md:block border-t border-slate-800/80 bg-slate-950/80 backdrop-blur-sm min-h-[58px] py-2 overflow-x-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2" aria-label="Tabs">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`h-9 flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-                    isActive
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/70 border border-transparent'
-                  }`}
-                >
-                  <span className="shrink-0">{item.icon}</span>
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ml-0.5 tracking-tight ${
-                      isActive ? 'bg-cyan-400 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400 border border-slate-700/60'
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
     </header>
   );
 };
