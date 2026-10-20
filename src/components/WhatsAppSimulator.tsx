@@ -44,6 +44,8 @@ import {
   Lock, 
   Globe, 
   ChevronRight,
+  ChevronsRight,
+  ChevronsLeft,
   TrendingUp,
   AlertCircle,
   HelpCircle,
@@ -100,6 +102,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
   const [lastLearningAlert, setLastLearningAlert] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [bookingConfirmedSlot, setBookingConfirmedSlot] = useState<string | null>(null);
+  const [isOpsOpen, setIsOpsOpen] = useState(false);
   
   // Meta Configuration Drawer/Modal State
   const [isMetaModalOpen, setIsMetaModalOpen] = useState(false);
@@ -287,7 +290,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
           {
             id: `a-${Date.now()}`,
             sender: 'agent',
-            text: 'Compreendo perfeitamente sua queixa! Para sua segurança clínica, a Dra. Camila Alencar já disponibilizou um horário de acolhimento hoje às 16h ou amanhã às 10h30. Qual fica melhor para você?',
+            text: 'Recebi sua mensagem. Me conta um pouco mais o que está sentindo que eu te oriento e, se fizer sentido, reservo hoje 16:00 ou amanhã 10:30 com a Dra. Camila.',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             suggestedQuickReplies: ['Quero hoje às 16h', 'Prefiro amanhã às 10h30']
           }
@@ -300,7 +303,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
         {
           id: `a-${Date.now()}`,
           sender: 'agent',
-          text: 'Compreendo seu relato com total atenção! Nossa equipe clínica especializada está de prontidão. Prefere comparecer hoje às 16:00 ou amanhã às 10:30 para sua avaliação?',
+          text: 'Estou aqui. Pode detalhar a queixa (dor, estética, retorno...) que eu te ajudo na hora e te encaixo hoje 16:00 ou amanhã 10:30 se precisar.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -402,87 +405,29 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Top Meta Synchronization Banner */}
-      <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 shadow-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Sincronização Meta Business API (v21.0)
-              </span>
-
-              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-800">
-                <Brain className="w-3.5 h-3.5" />
-                Cérebro IA: Nível QI {brainState.iqLevel} · {brainState.totalConversations} atendimentos
-              </span>
-
-              <span className="text-xs text-slate-400">
-                WABA ID: <code className="text-slate-300 font-mono">{metaConfig.wabaId}</code>
-              </span>
-            </div>
-
-            <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-white">
-              Simulador & Central de Atendimento WhatsApp Business API
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-3xl">
-              Agente inteligente de autoaprendizado conectado às APIs oficiais da Meta. Realiza acolhimento empático, triagem de sintomas, blindagem ética CRO-SP (Resolução CFO 196/2019) e reserva de cadeira em tempo real.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-            <button
-              onClick={handleTestMetaConnection}
-              disabled={isTestingConnection}
-              className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-md disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isTestingConnection ? 'animate-spin' : ''}`} />
-              <span>{isTestingConnection ? 'Validando...' : 'Testar Conexão Meta'}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setMetaForm(metaConfig);
-                setIsMetaModalOpen(true);
-              }}
-              className="flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              <span>Configurar Meta API</span>
-            </button>
-
+    <div className="h-[calc(100dvh-0.5rem)] sm:h-[calc(100dvh-0.75rem)] flex flex-col animate-fadeIn">
+      <div className="flex-1 min-h-0 flex gap-2 relative">
+        <div className="flex-1 min-w-0 flex justify-center relative">
+          <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
             <button
               onClick={handleResetChat}
-              className="flex items-center gap-2 px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
+              className="min-h-11 min-w-11 flex items-center justify-center rounded-full bg-slate-900/90 text-slate-200 border border-slate-700 cursor-pointer shadow-lg"
               title="Reiniciar Simulação"
+              aria-label="Limpar conversa"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Limpar Chat</span>
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setIsOpsOpen((open) => !open)}
+              className="min-h-11 min-w-11 flex items-center justify-center rounded-full bg-slate-900/90 text-cyan-300 border border-slate-700 cursor-pointer shadow-lg"
+              aria-expanded={isOpsOpen}
+              aria-label={isOpsOpen ? 'Recolher painel operacional' : 'Abrir painel operacional'}
+            >
+              {isOpsOpen ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
             </button>
           </div>
-        </div>
-
-        {/* Live Learning Ticker */}
-        {lastLearningAlert && (
-          <div className="mt-3.5 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-amber-300 bg-amber-950/40 px-3 py-2 rounded-lg border border-amber-800/60">
-            <div className="flex items-center gap-2 truncate">
-              <Zap className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="font-semibold text-amber-200">Novo Aprendizado do Agente:</span>
-              <span className="truncate text-slate-200">{lastLearningAlert}</span>
-            </div>
-            <span className="text-[11px] text-amber-400/80 shrink-0 font-mono ml-2">+0.05 QI</span>
-          </div>
-        )}
-      </div>
-
-      {/* Main Grid: Smartphone Simulator (Left) + Intelligence & Meta Control (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: Smartphone Mockup (Col 1 to 6) */}
-        <div className="lg:col-span-6 xl:col-span-5 flex flex-col items-center">
-          <div className="w-full max-w-[440px] bg-slate-900 rounded-[38px] p-3 shadow-2xl border-4 border-slate-800 relative">
-            {/* Screen Inner */}
-            <div className="bg-[#efeae2] rounded-[30px] overflow-hidden flex flex-col h-[700px] relative">
+          <div className="w-full max-w-[440px] h-full bg-slate-900 rounded-[28px] sm:rounded-[38px] p-2 sm:p-3 shadow-2xl border-4 border-slate-800 relative">
+            <div className="bg-[#efeae2] rounded-[22px] sm:rounded-[30px] overflow-hidden flex flex-col h-full relative">
               {/* WhatsApp Header */}
               <div className="bg-[#075e54] text-white px-4 py-3 flex items-center justify-between shadow-md z-10">
                 <div className="flex items-center gap-3">
@@ -663,7 +608,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
                 <button
                   onClick={() => handleSendMessage()}
                   disabled={!inputText.trim()}
-                  className="w-9 h-9 rounded-full bg-[#00a884] hover:bg-[#069677] text-white flex items-center justify-center transition-all disabled:opacity-40 cursor-pointer shrink-0 shadow-sm"
+                  className="min-h-11 min-w-11 rounded-full bg-[#00a884] hover:bg-[#069677] text-white flex items-center justify-center transition-all disabled:opacity-40 cursor-pointer shrink-0 shadow-sm"
                 >
                   <Send className="w-4 h-4 ml-0.5" />
                 </button>
@@ -672,8 +617,12 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Intelligence, Triage, Compliance & Learning Panel (Col 7 to 12) */}
-        <div className="lg:col-span-6 xl:col-span-7 space-y-4">
+        <div className={`overflow-hidden transition-all duration-300 ease-out motion-reduce:transition-none ${
+          isOpsOpen
+            ? 'absolute inset-y-0 right-0 z-20 w-[min(100%,22rem)] lg:static lg:w-[min(42%,28rem)] opacity-100 translate-x-0 bg-slate-50/95 backdrop-blur-sm border-l border-slate-200 shadow-xl lg:shadow-none'
+            : 'w-0 opacity-0 translate-x-6 pointer-events-none absolute right-0'
+        }`}>
+        <div className="h-full overflow-y-auto p-3 space-y-4 min-w-[18rem]">
           {/* Navigation Tabs for Right Panel */}
           <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
             <button
@@ -1081,6 +1030,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
 

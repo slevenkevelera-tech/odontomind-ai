@@ -812,36 +812,54 @@ app.post('/api/meta/chat-pipeline', async (req, res) => {
 
     if (ai) {
       try {
-        const systemInstruction = `Você é Carol, a assistente inteligente oficial da Clínica OdontoMind AI em São Paulo (Av. Paulista), operando via WhatsApp Business API oficial da Meta (Graph API v21.0).
-Responsável Técnica: Dra. Camila Alencar · Cirurgiã-Dentista · CRO-SP 89452.
+        const systemInstruction = `Você é Carol, recepcionista humana da Clínica OdontoMind AI (Av. Paulista, São Paulo).
+RT: Dra. Camila Alencar · CRO-SP 89452. Canal: WhatsApp Business.
 
-DIRETRIZES FUNDAMENTAIS DO ATENDIMENTO:
-1. Responda em estilo natural e acolhedor de WhatsApp: 2 a 4 frases, caloroso, com clareza e empatia clínica.
-2. TRIAGEM & ACOLHIMENTO: Entenda a queixa relatada com sensibilidade.
-3. CONFORMIDADE COM O CÓDIGO DE ÉTICA DO CRO (Resolução CFO 196/2019):
-   - NUNCA dê preço fixo ou fechado antes do exame clínico presencial. A boca é um organismo vivo e cada caso é único.
-   - Apresente como solução o nosso "Check-up Digital com Scanner 3D", onde o paciente visualiza a arcada sem compromisso.
-   - Sem promessas milagrosas.
-4. AGENDAMENTO: Ofereça as duas opções de horários disponíveis (Hoje às 16h ou Amanhã às 10h30 com a Dra. Camila Alencar).
+Como falar:
+- Responda como uma pessoa real no WhatsApp: calorosa, direta, 2 a 5 frases.
+- Reaja ao que a pessoa ACABOU de escrever. Cite um detalhe dela (sintoma, medo, prazo, nome do procedimento).
+- Nunca repita a mesma abertura ("Olá! Compreendo perfeitamente...") se o histórico já tem conversa.
+- Varie ritmo e vocabulário. Uma pergunta por vez. Sem markdown, sem listas com #.
 
-MEMÓRIAS E APRENDIZADOS ADQUIRIDOS EM INTEGRAÇÕES ANTERIORES:
+Ética (CFO 196/2019 / LGPD):
+- Nunca dê preço fechado, promoção ou resultado garantido.
+- Sem exame presencial, convide para o Check-up Digital com Scanner 3D.
+- Não prescreva medicamento.
+
+Agenda (só se couber no fluxo):
+- Ofereça no máximo 2 horários concretos: hoje 16:00 ou amanhã 10:30 com a Dra. Camila.
+- Se for dor aguda, priorize encaixe hoje.
+
+Heurísticas aprendidas:
 ${heuristicsContext}
 
-NUNCA use títulos markdown como "###" ou negritos excessivos. Responda apenas com a mensagem pronta para enviar no WhatsApp.`;
+Classificação interna desta mensagem: ${urgencyLabel} (${urgencyLevel}).`;
 
-        const userPrompt = `Mensagem recebida do paciente: "${message}". Histórico recente: ${JSON.stringify(conversationHistory.slice(-4))}`;
+        const recentTurns = Array.isArray(conversationHistory)
+          ? conversationHistory.slice(-8).map((turn: any) => {
+              const role = turn.role === 'agent' || turn.role === 'assistant' ? 'Carol' : 'Paciente';
+              return `${role}: ${turn.content || turn.text || ''}`;
+            }).join('\n')
+          : '';
+
+        const userPrompt = `Histórico recente:
+${recentTurns || '(início da conversa)'}
+
+Nova mensagem do paciente: "${message}"
+
+Responda SOMENTE o texto que Carol enviaria agora no WhatsApp.`;
 
         const aiPromise = ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: userPrompt,
           config: {
             systemInstruction,
-            temperature: 0.65,
+            temperature: 0.85,
           },
         });
 
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Gemini timeout')), 4200)
+          setTimeout(() => reject(new Error('Gemini timeout')), 8000)
         );
 
         const aiResponse: any = await Promise.race([aiPromise, timeoutPromise]);
@@ -1738,30 +1756,38 @@ function generateLocalAutomationMessage(
 }
 
 // WhatsApp Pipeline Local Clinical Helpers
+function pickSnippet(message: string): string {
+  const cleaned = message.replace(/\s+/g, ' ').trim();
+  if (cleaned.length <= 42) return cleaned;
+  return `${cleaned.slice(0, 42).trim()}...`;
+}
+
 function generateLocalWhatsAppReply(urgencyLevel: string, message: string, patientName: string): string {
   const msgLower = message.toLowerCase();
+  const snippet = pickSnippet(message);
+  const greet = patientName && patientName !== 'Paciente' ? `${patientName}, ` : '';
 
   if (urgencyLevel === 'emergencia_dor') {
-    return `Olá! Compreendo perfeitamente sua dor e o quanto isso é desconfortável. Já avisei nossa equipe clínica de plantão da Dra. Camila Alencar. Conseguimos um encaixe de urgência para você ainda hoje às 14:30 ou às 16:00 para aliviar essa dor de forma rápida e segura. Qual horário fica melhor para você vir?`;
+    return `${greet}vi aqui que você falou: "${snippet}". Isso pede encaixe rápido. Já sinalizei o plantão da Dra. Camila. Consegue vir hoje às 14:30 ou prefere 16:00 para a gente avaliar e aliviar com segurança?`;
   }
 
   if (urgencyLevel === 'pos_operatorio') {
-    return `Olá! Acompanhamento pós-operatório é prioridade aqui na clínica. Em uma escala de 0 a 10, qual o nível de desconforto agora? Continue com o repouso e a medicação receitada pelo Dr. Lucas. Se preferir, temos um horário de retorno hoje às 16:00 para uma avaliação presencial rápida do ponto e cicatrização.`;
+    return `${greet}obrigada por avisar sobre o pós-operatório ("${snippet}"). Em uma escala de 0 a 10, como está o desconforto agora? Se quiser, te encaixo hoje às 16:00 com o Dr. Lucas para olhar ponto e cicatrização.`;
   }
 
   if (/preço|valor|custa|orçamento/i.test(msgLower)) {
-    return `Olá! Compreendo totalmente sua pergunta sobre valores. Pelo Código de Ética Odontológica (Resolução CFO 196/2019), cada sorriso é biologicamente único e não podemos passar valores fechados sem examinar previamente. Para sua segurança, realizamos um Check-up Digital com Scanner 3D de alta precisão que mostra exatamente o que precisa ser feito. Temos horário hoje às 16h ou amanhã às 10h30 com a Dra. Camila Alencar. Qual você prefere?`;
+    return `${greet}entendi a dúvida de valor em "${snippet}". Pelo CFO 196/2019 eu não posso fechar preço sem exame, porque cada caso é diferente. No Check-up Digital com Scanner 3D a Dra. Camila te mostra o plano na hora. Te encaixo hoje 16:00 ou amanhã 10:30?`;
   }
 
   if (/alinhador|invisalign|aparelho/i.test(msgLower)) {
-    return `Olá! Que excelente escolha cuidar do alinhamento do seu sorriso com tecnologia invisível! Aqui na clínica nós realizamos um escaneamento intraoral 3D computadorizado onde você visualiza a simulação virtual do seu sorriso alinhado antes mesmo de iniciar o tratamento. Temos disponibilidade amanhã às 10h30 ou quinta às 15h. Qual horário se encaixa na sua rotina?`;
+    return `${greet}legal você perguntar sobre "${snippet}". No escaneamento 3D você vê a simulação do sorriso alinhado antes de decidir. Prefere amanhã 10:30 ou quinta 15:00 com a Dra. Camila?`;
   }
 
   if (/medo|pavor|agulha|ansios/i.test(msgLower)) {
-    return `Olá! É absolutamente normal e compreensível sentir receio ou ansiedade. Queremos que saiba que aqui na OdontoMind AI trabalhamos com anestesia computadorizada sem agulha e técnicas de sedação leve e acolhedora, totalmente indolores. Nossa primeira consulta é apenas uma conversa tranquila para entender seus desejos. Prefere vir amanhã às 10h30 ou às 16h?`;
+    return `${greet}obrigada por falar isso comigo ("${snippet}"). É bem comum. Aqui a primeira consulta é só conversa, e usamos anestesia computadorizada sem agulha quando precisa. Quer vir amanhã 10:30 ou hoje 16:00, no seu ritmo?`;
   }
 
-  return `Olá! Sou a Carol, assistente da Clínica OdontoMind AI. A Dra. Camila Alencar (CRO-SP 89452) e nossa equipe especialista estão à sua inteira disposição. Para avaliarmos com todo o cuidado no nosso scanner 3D, temos horários disponíveis hoje às 16h ou amanhã às 10h30. Qual momento é mais cômodo para você?`;
+  return `${greet}recebi: "${snippet}". Sou a Carol da OdontoMind. Me conta um pouco mais o que você precisa (dor, estética, retorno...) que eu te oriento e, se fizer sentido, reservo hoje 16:00 ou amanhã 10:30 com a Dra. Camila.`;
 }
 
 function extractAdaptiveLearningInsight(textLower: string, urgencyLevel: string) {

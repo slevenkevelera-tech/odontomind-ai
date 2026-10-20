@@ -354,9 +354,10 @@ export default function App() {
     });
   };
 
+  const isWhatsAppFocus = activeTab === 'whatsapp';
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
-      {/* Top Application Header with Notification Center */}
+    <div className="min-h-dvh bg-slate-50 flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -369,10 +370,16 @@ export default function App() {
         onMarkAllNotificationsAsRead={handleMarkAllNotificationsAsRead}
         onClearAllNotifications={handleClearAllNotifications}
         onTriggerDemoToast={handleTriggerDemoToast}
+        compact={isWhatsAppFocus}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main
+        className={`flex-1 w-full pl-14 sm:pl-16 transition-[padding] duration-300 ease-out motion-reduce:transition-none ${
+          isWhatsAppFocus
+            ? 'max-w-none pr-2 sm:pr-3 py-2 sm:py-3'
+            : 'max-w-7xl pr-4 sm:pr-6 lg:pr-8 py-6 sm:py-8'
+        }`}
+      >
         {activeTab === 'crm' && (
           <CrmPipeline
             patients={patients}
@@ -466,8 +473,9 @@ export default function App() {
         }}
       />
 
-      {/* Footer with Medical & Legal Disclaimers */}
-      <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-8 mt-12">
+      <footer className={`bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-8 pl-14 sm:pl-16 transition-all duration-300 ease-out motion-reduce:transition-none ${
+        isWhatsAppFocus ? 'hidden' : 'mt-12'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
