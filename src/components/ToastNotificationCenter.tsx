@@ -135,15 +135,16 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
       <div className="relative">
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className={`relative p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center ${
+          className={`relative min-h-11 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             isDropdownOpen 
               ? 'bg-slate-800 text-cyan-400 ring-2 ring-cyan-500/40' 
-              : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+              : 'text-slate-200 hover:text-white hover:bg-slate-800/70'
           }`}
-          title="Notificações Clínicas & Alertas de Follow-up"
+          title="Notificações clínicas e alertas de follow-up"
           aria-label="Abrir central de notificações"
         >
           <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="hidden sm:inline text-xs font-semibold">Alertas</span>
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-rose-500 text-white font-extrabold text-[10px] rounded-full flex items-center justify-center shadow-md animate-bounce">
               {unreadCount > 9 ? '9+' : unreadCount}
@@ -153,7 +154,7 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
 
         {/* Dropdown Notification Drawer */}
         {isDropdownOpen && (
-          <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 text-slate-800 overflow-hidden animate-scaleIn">
+          <div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-1.5rem))] bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 text-slate-800 overflow-hidden animate-scaleIn">
             {/* Header of Drawer */}
             <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -312,7 +313,7 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
 
       {/* 2. Floating Toast Stack (Bottom-Right of the Screen) */}
       <div 
-        className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"
+        className="fixed bottom-6 right-3 sm:right-6 z-[60] flex flex-col gap-3 max-w-sm w-[calc(100%-1.5rem)] sm:w-full pointer-events-none"
         aria-live="polite"
       >
         {activeToasts.map((toast) => {

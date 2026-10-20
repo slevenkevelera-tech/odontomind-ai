@@ -32,7 +32,7 @@ export const RoadmapMap: React.FC<RoadmapMapProps> = ({ onNavigateTab }) => {
         <div className="absolute -right-12 -top-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-1/3 -bottom-12 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-4xl space-y-4">
+        <div className="relative z-10 max-w-4xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-medium">
             <Cpu className="w-3.5 h-3.5" />
             <span>Engenharia de Software & IA Aplicada à Odontologia de Alta Performance</span>
@@ -46,7 +46,7 @@ export const RoadmapMap: React.FC<RoadmapMapProps> = ({ onNavigateTab }) => {
             Plano diretor completo desenhado para transformar a clínica em uma potência digital: portal web ultrarrápido bioestético, esteira de serviços de alto ticket, CRM integrado de pacientes com prontuário em nuvem, automações clínicas e marketing viral 100% blindado contra infrações do Conselho Regional de Odontologia (CRO/CFO).
           </p>
 
-          <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-slate-400">
             <span className="flex items-center gap-1.5 text-slate-300">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               LGPD & Criptografia Médica
