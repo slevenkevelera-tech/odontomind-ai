@@ -27,3 +27,7 @@ services:
         sync: false # WhatsApp Business Account ID (opcional)
       - key: META_ACCESS_TOKEN
         sync: false # Token de Acesso de Usuário do Sistema da Meta (opcional)
+      - key: ECC_BASE_URL
+        value: https://ecc-loops-digital-web.onrender.com
+      - key: ECC_API_TOKEN
+        sync: false # Cole no painel o token ecc_live_ gerado na mesa ECC

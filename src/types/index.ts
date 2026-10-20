@@ -10,7 +10,8 @@ export type TabType =
   | 'roadmap' 
   | 'services' 
   | 'cro'
-  | 'omniroute';
+  | 'omniroute'
+  | 'ecc_bridge';
 
 export type SocialPlatform = 'instagram' | 'whatsapp' | 'facebook' | 'tiktok' | 'google';
 

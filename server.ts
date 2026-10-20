@@ -13,6 +13,20 @@ import {
   buildAppointmentFromSlot,
   generateBookingReply
 } from './src/lib/carolBooking.ts';
+import {
+  eccRequest,
+  pickAgentForJob,
+  ODONTO_AGENT_SEEDS,
+  type EccAgent,
+  type EccTaskRun,
+} from './src/lib/eccRemote.ts';
+import {
+  applyImprovement,
+  listImprovementJobs,
+  jobBrief,
+  type ImprovementJobId,
+  type ImprovementResult,
+} from './src/lib/eccImprovements.ts';
 
 dotenv.config();
 
@@ -2085,6 +2099,165 @@ app.post('/api/calendar/sync', async (req, res) => {
     return res.status(500).json({ success: false, status: 'error', message: error.message });
   }
 });
+
+const ECC_STORE_FILE = path.join(PROJECT_ROOT, 'data', 'ecc-bridge.json')
+
+type EccBridgeStore = {
+  baseUrl: string
+  token: string
+  prefix: string
+  agents: EccAgent[]
+  improvements: Array<ImprovementResult & { id: string; createdAt: string }>
+}
+
+function emptyEccStore(): EccBridgeStore {
+  return {
+    baseUrl: process.env.ECC_BASE_URL || 'https://ecc-loops-digital-web.onrender.com',
+    token: process.env.ECC_API_TOKEN || '',
+    prefix: '',
+    agents: [],
+    improvements: [],
+  }
+}
+
+function readEccStore(): EccBridgeStore {
+  try {
+    return { ...emptyEccStore(), ...JSON.parse(fs.readFileSync(ECC_STORE_FILE, 'utf8')) }
+  } catch {
+    return emptyEccStore()
+  }
+}
+
+function writeEccStore(store: EccBridgeStore) {
+  fs.mkdirSync(path.dirname(ECC_STORE_FILE), { recursive: true })
+  fs.writeFileSync(ECC_STORE_FILE, JSON.stringify(store, null, 2))
+}
+
+function publicEccStatus(store: EccBridgeStore) {
+  return {
+    connected: Boolean(store.token),
+    baseUrl: store.baseUrl,
+    prefix: store.prefix || (store.token ? store.token.slice(0, 16) : ''),
+    agents: store.agents,
+    improvements: store.improvements,
+    jobs: listImprovementJobs(),
+  }
+}
+
+async function ensureOdontoAgents(store: EccBridgeStore) {
+  const existing = new Set(store.agents.map((agent) => agent.name.toLowerCase()))
+  for (const seed of ODONTO_AGENT_SEEDS) {
+    if (existing.has(seed.name.toLowerCase())) continue
+    const created = await eccRequest<EccAgent>(store.baseUrl, store.token, '/api/v1/agents', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: seed.name,
+        role: seed.role,
+        sourceId: seed.sourceId,
+        skills: seed.skills,
+      }),
+    })
+    store.agents.unshift(created)
+    existing.add(seed.name.toLowerCase())
+  }
+  writeEccStore(store)
+  return store.agents
+}
+
+app.get('/api/ecc/status', (_req, res) => {
+  res.json(publicEccStatus(readEccStore()))
+})
+
+app.post('/api/ecc/connect', async (req, res) => {
+  try {
+    const token = String(req.body?.token || '').trim()
+    const baseUrl = String(req.body?.baseUrl || process.env.ECC_BASE_URL || 'https://ecc-loops-digital-web.onrender.com').replace(/\/$/, '')
+    if (!token.startsWith('ecc_live_')) {
+      return res.status(400).json({ error: 'Cole um token ecc_live_ gerado na mesa ECC.' })
+    }
+    const health = await eccRequest<{ ok: boolean; token: string }>(baseUrl, token, '/api/v1/health')
+    if (!health.ok) return res.status(401).json({ error: 'Token recusado pela mesa ECC.' })
+    const remoteAgents = await eccRequest<EccAgent[]>(baseUrl, token, '/api/v1/agents')
+    const store: EccBridgeStore = {
+      baseUrl,
+      token,
+      prefix: token.slice(0, 16),
+      agents: remoteAgents,
+      improvements: readEccStore().improvements,
+    }
+    writeEccStore(store)
+    await ensureOdontoAgents(store)
+    return res.json(publicEccStatus(readEccStore()))
+  } catch (error: any) {
+    return res.status(error.status || 500).json({ error: error.message || 'Falha ao conectar na mesa ECC' })
+  }
+})
+
+app.post('/api/ecc/disconnect', (_req, res) => {
+  const current = readEccStore()
+  writeEccStore({
+    ...emptyEccStore(),
+    improvements: current.improvements,
+  })
+  res.json(publicEccStatus(readEccStore()))
+})
+
+app.post('/api/ecc/sync', async (_req, res) => {
+  const store = readEccStore()
+  if (!store.token) return res.status(400).json({ error: 'Conecte um token primeiro.' })
+  try {
+    store.agents = await eccRequest<EccAgent[]>(store.baseUrl, store.token, '/api/v1/agents')
+    writeEccStore(store)
+    await ensureOdontoAgents(store)
+    res.json(publicEccStatus(readEccStore()))
+  } catch (error: any) {
+    res.status(error.status || 500).json({ error: error.message })
+  }
+})
+
+app.post('/api/ecc/improve', async (req, res) => {
+  const jobId = String(req.body?.jobId || '') as ImprovementJobId
+  const meta = jobBrief(jobId)
+  if (!meta) return res.status(400).json({ error: 'Job desconhecido.' })
+  const store = readEccStore()
+  if (!store.token) return res.status(400).json({ error: 'Conecte um token primeiro.' })
+
+  try {
+    if (!store.agents.length) {
+      store.agents = await eccRequest<EccAgent[]>(store.baseUrl, store.token, '/api/v1/agents')
+    }
+    await ensureOdontoAgents(store)
+    const fresh = readEccStore()
+    const agent = pickAgentForJob(fresh.agents, jobId)
+    if (!agent) return res.status(400).json({ error: 'Nenhum agente ECC disponivel.' })
+
+    const task = await eccRequest<{ id: string }>(fresh.baseUrl, fresh.token, '/api/v1/tasks', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: meta.title,
+        brief: `${meta.brief} Clinica OdontoMind AI. Sem dados de prontuario identificavel.`,
+        agentId: agent.id,
+        priority: 'alta',
+      }),
+    })
+    const run = await eccRequest<EccTaskRun>(fresh.baseUrl, fresh.token, `/api/v1/tasks/${task.id}/run`, {
+      method: 'POST',
+    })
+    const improvement = applyImprovement(jobId, run)
+    const saved = {
+      ...improvement,
+      id: `imp-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      agentId: agent.id,
+      agentName: agent.name,
+    }
+    fresh.improvements = [saved, ...fresh.improvements].slice(0, 50)
+    writeEccStore(fresh)
+    res.json({ improvement: saved, agent, run })
+  } catch (error: any) {
+    res.status(error.status || 500).json({ error: error.message || 'Falha ao executar melhoria ECC' })
+  }
+})
 
 function generateLocalSdrReply(channel: string, procedure: string, textLower: string, leadName: string): string {
   if (textLower.includes('alinhador') || textLower.includes('invisalign') || textLower.includes('aparelho')) {

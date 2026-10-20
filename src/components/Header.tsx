@@ -21,7 +21,8 @@ import {
   Menu,
   X,
   Network,
-  FolderOpen
+  FolderOpen,
+  KeyRound
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -111,6 +112,13 @@ export const Header: React.FC<HeaderProps> = ({
       icon: <Network className="w-4 h-4" />,
       badge: 'Malha IA',
       desc: 'Elo de integração e roteamento inteligente multicanal'
+    },
+    {
+      id: 'ecc_bridge',
+      label: 'Mesa ECC e Tokens',
+      icon: <KeyRound className="w-4 h-4" />,
+      badge: 'ecc_live',
+      desc: 'Conecte um token de outro site com agentes e aperfeiçoe a clínica'
     },
     {
       id: 'roadmap',
