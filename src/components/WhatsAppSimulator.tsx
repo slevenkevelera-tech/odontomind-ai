@@ -204,7 +204,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          conversationHistory: messages.slice(-5).map(m => ({ role: m.sender, content: m.text })),
+          conversationHistory: messages.slice(-8).map(m => ({ role: m.sender, content: m.text })),
           patientName: 'Paciente',
           metaConfig,
           activeHeuristics: brainState.heuristics
@@ -290,7 +290,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
           {
             id: `a-${Date.now()}`,
             sender: 'agent',
-            text: 'Recebi sua mensagem. Me conta um pouco mais o que está sentindo que eu te oriento e, se fizer sentido, reservo hoje 16:00 ou amanhã 10:30 com a Dra. Camila.',
+                text: `Recebi: "${text.slice(0, 80)}". Me conta um pouco mais o que está sentindo que eu te oriento e, se fizer sentido, reservo hoje 16:00 ou amanhã 10:30 com a Dra. Camila.`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             suggestedQuickReplies: ['Quero hoje às 16h', 'Prefiro amanhã às 10h30']
           }
@@ -303,7 +303,7 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
         {
           id: `a-${Date.now()}`,
           sender: 'agent',
-          text: 'Estou aqui. Pode detalhar a queixa (dor, estética, retorno...) que eu te ajudo na hora e te encaixo hoje 16:00 ou amanhã 10:30 se precisar.',
+          text: `Estou aqui. Vi "${text.slice(0, 60)}". Pode detalhar a queixa (dor, estética, retorno...) que eu te ajudo na hora e te encaixo hoje 16:00 ou amanhã 10:30 se precisar.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);

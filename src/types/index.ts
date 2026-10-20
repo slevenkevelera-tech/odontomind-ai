@@ -183,6 +183,17 @@ export interface PatientLead {
 
 export type SmsDeliveryStatus = 'entregue' | 'enviado' | 'pendente' | 'falha' | 'respondido';
 
+export type GoogleCalendarSyncStatus = 'synced' | 'pending' | 'error' | 'local';
+
+export interface ClinicDentist {
+  id: string;
+  name: string;
+  specialty: string;
+  cro: string;
+  calendarId: string;
+  color: string;
+}
+
 export interface Appointment {
   id: string;
   patientId: string;
@@ -192,6 +203,7 @@ export interface Appointment {
   time: string; // HH:mm
   durationMinutes: number;
   dentist: string;
+  dentistId?: string;
   procedure: string;
   status: 'confirmed' | 'pending' | 'completed' | 'cancelled';
   reminderSent: boolean;
@@ -201,6 +213,10 @@ export interface Appointment {
   smsDeliveredAt?: string;
   smsMessageContent?: string;
   smsProviderId?: string;
+  googleEventId?: string;
+  googleCalendarId?: string;
+  googleSyncStatus?: GoogleCalendarSyncStatus;
+  googleHtmlLink?: string;
 }
 
 export type AgentType = 

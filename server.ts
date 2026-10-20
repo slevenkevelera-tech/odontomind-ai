@@ -858,8 +858,8 @@ Responda SOMENTE o texto que Carol enviaria agora no WhatsApp.`;
           },
         });
 
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Gemini timeout')), 8000)
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Gemini timeout')), 20000)
         );
 
         const aiResponse: any = await Promise.race([aiPromise, timeoutPromise]);
@@ -1762,32 +1762,62 @@ function pickSnippet(message: string): string {
   return `${cleaned.slice(0, 42).trim()}...`;
 }
 
+function pickVariant(message: string, options: string[]): string {
+  const seed = Array.from(message).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  return options[seed % options.length];
+}
+
 function generateLocalWhatsAppReply(urgencyLevel: string, message: string, patientName: string): string {
   const msgLower = message.toLowerCase();
   const snippet = pickSnippet(message);
   const greet = patientName && patientName !== 'Paciente' ? `${patientName}, ` : '';
 
   if (urgencyLevel === 'emergencia_dor') {
-    return `${greet}vi aqui que você falou: "${snippet}". Isso pede encaixe rápido. Já sinalizei o plantão da Dra. Camila. Consegue vir hoje às 14:30 ou prefere 16:00 para a gente avaliar e aliviar com segurança?`;
+    return pickVariant(message, [
+      `${greet}li agora: "${snippet}". Dor assim a gente nao deixa esperando. Ja avisei o plantao da Dra. Camila. Voce consegue chegar hoje as 14:30 ou prefere 16:00?`,
+      `${greet}entendi o que voce descreveu ("${snippet}"). Vou te encaixar. Prefere o horario de 14:30 ou 16:00 hoje, para avaliar e aliviar com seguranca?`,
+      `${greet}obrigada por falar da dor. "${snippet}" pede atendimento hoje. Te reservo 14:30 ou 16:00 com a Dra. Camila. Qual fecha melhor?`
+    ]);
   }
 
   if (urgencyLevel === 'pos_operatorio') {
-    return `${greet}obrigada por avisar sobre o pós-operatório ("${snippet}"). Em uma escala de 0 a 10, como está o desconforto agora? Se quiser, te encaixo hoje às 16:00 com o Dr. Lucas para olhar ponto e cicatrização.`;
+    return pickVariant(message, [
+      `${greet}obrigada por avisar do pos ("${snippet}"). De 0 a 10, como esta o desconforto agora? Se quiser, te encaixo hoje as 16:00 com o Dr. Lucas.`,
+      `${greet}recebi o relato do pos-operatorio. "${snippet}". O Dr. Lucas consegue te ver hoje as 16:00. Prefere esse horario ou amanha de manha?`,
+      `${greet}li sua mensagem sobre recuperacao. Me diz a nota da dor (0-10) que eu ja organizo o retorno com o Dr. Lucas.`
+    ]);
   }
 
-  if (/preço|valor|custa|orçamento/i.test(msgLower)) {
-    return `${greet}entendi a dúvida de valor em "${snippet}". Pelo CFO 196/2019 eu não posso fechar preço sem exame, porque cada caso é diferente. No Check-up Digital com Scanner 3D a Dra. Camila te mostra o plano na hora. Te encaixo hoje 16:00 ou amanhã 10:30?`;
+  if (/preco|preço|valor|custa|orcamento|orçamento/i.test(msgLower)) {
+    return pickVariant(message, [
+      `${greet}entendi a duvida de valor em "${snippet}". Pelo CFO 196/2019 eu nao fecho preco sem exame, porque cada caso e diferente. No Check-up Digital a Dra. Camila monta o plano na hora. Te encaixo hoje 16:00 ou amanha 10:30?`,
+      `${greet}boa pergunta sobre investimento. Sem avaliar a boca eu nao posso passar valor fechado. Que tal o scanner 3D hoje as 16:00 ou amanha as 10:30, e voce sai com o plano?`,
+      `${greet}sobre "${snippet}": o valor so fecha depois do exame. Posso te reservar hoje 16:00 ou amanha 10:30 com a Dra. Camila para voce ver o caso no scanner.`
+    ]);
   }
 
   if (/alinhador|invisalign|aparelho/i.test(msgLower)) {
-    return `${greet}legal você perguntar sobre "${snippet}". No escaneamento 3D você vê a simulação do sorriso alinhado antes de decidir. Prefere amanhã 10:30 ou quinta 15:00 com a Dra. Camila?`;
+    return pickVariant(message, [
+      `${greet}legal voce perguntar sobre "${snippet}". No escaneamento 3D voce ve a simulacao antes de decidir. Prefere amanha 10:30 ou quinta 15:00 com a Dra. Camila?`,
+      `${greet}alinhador combina com avaliacao digital. Te mostro a simulacao na consulta. Fecha amanha 10:30 ou prefere outro dia?`,
+      `${greet}anotei o interesse em "${snippet}". Primeiro passo e o scanner. Voce prefere manha (10:30) ou tarde (16:00)?`
+    ]);
   }
 
   if (/medo|pavor|agulha|ansios/i.test(msgLower)) {
-    return `${greet}obrigada por falar isso comigo ("${snippet}"). É bem comum. Aqui a primeira consulta é só conversa, e usamos anestesia computadorizada sem agulha quando precisa. Quer vir amanhã 10:30 ou hoje 16:00, no seu ritmo?`;
+    return pickVariant(message, [
+      `${greet}obrigada por falar isso comigo ("${snippet}"). E bem comum. A primeira consulta e so conversa, e usamos anestesia computadorizada quando precisa. Quer vir amanha 10:30 ou hoje 16:00, no seu ritmo?`,
+      `${greet}entendi o receio. Ninguem aqui te empurra. A gente comeca conversando. Prefere um horario mais calmo amanha as 10:30?`,
+      `${greet}anotei: "${snippet}". Vamos no seu tempo. Te reservo um horario so de conversa. Hoje 16:00 ou amanha 10:30?`
+    ]);
   }
 
-  return `${greet}recebi: "${snippet}". Sou a Carol da OdontoMind. Me conta um pouco mais o que você precisa (dor, estética, retorno...) que eu te oriento e, se fizer sentido, reservo hoje 16:00 ou amanhã 10:30 com a Dra. Camila.`;
+  return pickVariant(message, [
+    `${greet}recebi: "${snippet}". Sou a Carol da OdontoMind. Me conta um pouco mais o que voce precisa que eu te oriento e, se fizer sentido, reservo hoje 16:00 ou amanha 10:30 com a Dra. Camila.`,
+    `${greet}oi, vi sua mensagem ("${snippet}"). Posso te ajudar com dor, estetica ou retorno. O que esta mais urgente agora?`,
+    `${greet}obrigada pelo contato. Sobre "${snippet}", me diz se e avaliacao, retorno ou urgencia que eu ja olho a agenda da Dra. Camila.`,
+    `${greet}estou aqui. "${snippet}". Voce prefere falar mais do caso ou ja te mostro dois horarios (hoje 16:00 / amanha 10:30)?`
+  ]);
 }
 
 function extractAdaptiveLearningInsight(textLower: string, urgencyLevel: string) {
@@ -1837,6 +1867,155 @@ function getSuggestedQuickReplies(urgencyLevel: string): string[] {
 }
 
 // SDR Multi-Channel Local Fallback
+const CALENDAR_STORE_PATH = path.join(PROJECT_ROOT, 'data', 'calendar-events.json');
+
+type StoredCalendarEvent = {
+  id: string;
+  dentistId: string;
+  calendarId: string;
+  patientName: string;
+  patientPhone: string;
+  date: string;
+  time: string;
+  durationMinutes: number;
+  procedure: string;
+  status: string;
+  googleEventId?: string;
+  googleHtmlLink?: string;
+};
+
+function readCalendarStore(): StoredCalendarEvent[] {
+  try {
+    if (!fs.existsSync(CALENDAR_STORE_PATH)) return [];
+    const raw = fs.readFileSync(CALENDAR_STORE_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCalendarStore(events: StoredCalendarEvent[]) {
+  const dir = path.dirname(CALENDAR_STORE_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(CALENDAR_STORE_PATH, JSON.stringify(events, null, 2), 'utf8');
+}
+
+function buildGoogleEventTimes(date: string, time: string, durationMinutes: number) {
+  const start = new Date(`${date}T${time}:00-03:00`);
+  const end = new Date(start.getTime() + durationMinutes * 60000);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+app.get('/api/calendar/status', (_req, res) => {
+  const token = process.env.USER_GOOGLE_CALENDAR_TOKEN;
+  const connected = Boolean(token);
+  return res.json({
+    connected,
+    mode: connected ? 'live' : 'local',
+    message: connected
+      ? 'Google Calendar conectado. Consultas novas sao enviadas a agenda do dentista.'
+      : 'Agenda da clinica ativa neste site. Informe USER_GOOGLE_CALENDAR_TOKEN para sincronizar com o Google.',
+    calendars: [
+      { id: 'camila.alencar@odontomind.ai', summary: 'Dra. Camila Alencar' },
+      { id: 'lucas.sampaio@odontomind.ai', summary: 'Dr. Lucas Sampaio' },
+      { id: 'marcelo.ribeiro@odontomind.ai', summary: 'Dr. Marcelo Ribeiro' }
+    ]
+  });
+});
+
+app.get('/api/calendar/events', (req, res) => {
+  const dentistId = String(req.query.dentistId || '');
+  const date = String(req.query.date || '');
+  const store = readCalendarStore();
+  const appointments = store.filter((event) => {
+    const matchDentist = !dentistId || event.dentistId === dentistId;
+    const matchDate = !date || event.date === date;
+    return matchDentist && matchDate;
+  });
+  return res.json({ success: true, appointments });
+});
+
+app.post('/api/calendar/sync', async (req, res) => {
+  try {
+    const { appointment, dentist } = req.body || {};
+    if (!appointment || !appointment.date || !appointment.time) {
+      return res.status(400).json({ success: false, message: 'Consulta incompleta para sincronizar.' });
+    }
+
+    const dentistId = dentist?.id || 'camila-alencar';
+    const calendarId = dentist?.calendarId || appointment.googleCalendarId || 'primary';
+    const token = process.env.USER_GOOGLE_CALENDAR_TOKEN;
+    let googleEventId: string | undefined;
+    let googleHtmlLink: string | undefined;
+    let status: 'synced' | 'pending' | 'local' = 'local';
+    let message = 'Consulta registrada na agenda da clinica.';
+
+    if (token) {
+      try {
+        const times = buildGoogleEventTimes(appointment.date, appointment.time, Number(appointment.durationMinutes) || 60);
+        const payload = {
+          summary: `${appointment.patientName} · ${appointment.procedure}`,
+          description: `Paciente: ${appointment.patientName}\nTelefone: ${appointment.patientPhone}\nDentista: ${dentist?.name || appointment.dentist}\nOrigem: OdontoMind AI`,
+          start: { dateTime: times.start, timeZone: 'America/Sao_Paulo' },
+          end: { dateTime: times.end, timeZone: 'America/Sao_Paulo' }
+        };
+        const targetCalendar = encodeURIComponent(calendarId);
+        const googleRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendar}/events`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        const googleData: any = await googleRes.json();
+        if (googleRes.ok && googleData.id) {
+          googleEventId = googleData.id;
+          googleHtmlLink = googleData.htmlLink;
+          status = 'synced';
+          message = 'Consulta gravada na agenda do dentista e no Google Calendar.';
+        } else {
+          status = 'pending';
+          message = googleData.error?.message || 'Google Calendar recusou o evento. Consulta permanece no site.';
+        }
+      } catch (err: any) {
+        status = 'pending';
+        message = err?.message || 'Falha ao falar com o Google Calendar. Consulta permanece no site.';
+      }
+    }
+
+    const storedEvent: StoredCalendarEvent = {
+      id: appointment.id || `apt-${Date.now()}`,
+      dentistId,
+      calendarId,
+      patientName: appointment.patientName,
+      patientPhone: appointment.patientPhone,
+      date: appointment.date,
+      time: appointment.time,
+      durationMinutes: Number(appointment.durationMinutes) || 60,
+      procedure: appointment.procedure,
+      status: appointment.status || 'pending',
+      googleEventId,
+      googleHtmlLink
+    };
+
+    const store = readCalendarStore();
+    const next = [storedEvent, ...store.filter((item) => item.id !== storedEvent.id)];
+    writeCalendarStore(next);
+
+    return res.json({
+      success: true,
+      status,
+      googleEventId,
+      googleHtmlLink,
+      message
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, status: 'error', message: error.message });
+  }
+});
+
 function generateLocalSdrReply(channel: string, procedure: string, textLower: string, leadName: string): string {
   if (textLower.includes('alinhador') || textLower.includes('invisalign') || textLower.includes('aparelho')) {
     return `Olá, ${leadName}! Que excelente iniciativa querer transformar seu sorriso com alinhadores transparentes! ✨ Aqui na OdontoMind AI nós realizamos um Check-up com Scanner 3D intraoral onde você visualiza a simulação virtual do seu sorriso alinhado antes mesmo de começar. Temos horários disponíveis hoje às 16h ou amanhã às 10h30 com a Dra. Camila Alencar. Qual período fica melhor para você?`;

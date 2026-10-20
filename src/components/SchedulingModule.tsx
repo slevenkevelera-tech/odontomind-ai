@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Appointment, PatientLead, SmsDeliveryStatus } from '../types';
+import { clinicDentists, dentistFromId, dentistIdFromName } from '../data/dentists';
+import { fetchGoogleCalendarStatus, GoogleCalendarStatus } from '../lib/googleCalendar';
 import { 
   Calendar, 
   Clock, 
@@ -8,21 +10,14 @@ import {
   XCircle, 
   Plus, 
   Send, 
-  Phone, 
-  MessageSquare, 
-  Mail, 
-  Filter, 
-  User, 
-  Sparkles,
   Search,
   Check,
   Smartphone,
   CheckCheck,
   RefreshCw,
   SendHorizontal,
-  Info,
   ShieldCheck,
-  Copy
+  Cloud
 } from 'lucide-react';
 
 interface SchedulingModuleProps {
@@ -56,19 +51,30 @@ export const SchedulingModule: React.FC<SchedulingModuleProps> = ({
   const [smsSuccessNotice, setSmsSuccessNotice] = useState<string | null>(null);
 
   // New Appointment Form State
-  const [newPatientId, setNewPatientId] = useState(patients[0]?.id || '');
+  const [newPatientId, setNewPatientId] = useState(patients[0]?.id || 'walk-in');
+  const [walkInName, setWalkInName] = useState('');
+  const [walkInPhone, setWalkInPhone] = useState('');
   const [newDate, setNewDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [newTime, setNewTime] = useState('14:00');
   const [newDuration, setNewDuration] = useState(60);
-  const [newDentist, setNewDentist] = useState('Dra. Camila Alencar');
-  const [newProcedure, setNewProcedure] = useState('Avaliação Inicial com Scanner 3D');
+  const [newDentist, setNewDentist] = useState(clinicDentists[0].name);
+  const [newProcedure, setNewProcedure] = useState('Avaliacao Inicial com Scanner 3D');
   const [sendAutoSms, setSendAutoSms] = useState(true);
+  const [googleStatus, setGoogleStatus] = useState<GoogleCalendarStatus | null>(null);
+  const [boardDate, setBoardDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  useEffect(() => {
+    void fetchGoogleCalendarStatus().then(setGoogleStatus);
+  }, []);
 
   // Filter appointments
   const filteredAppointments = appointments.filter((apt) => {
     const matchesStatus = filterStatus === 'all' || apt.status === filterStatus;
     const matchesSms = filterSmsStatus === 'all' || apt.smsStatus === filterSmsStatus;
-    const matchesDentist = selectedDentist === 'all' || apt.dentist === selectedDentist;
+    const matchesDentist =
+      selectedDentist === 'all' ||
+      apt.dentist === selectedDentist ||
+      apt.dentistId === dentistIdFromName(selectedDentist);
     const matchesSearch = 
       apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       apt.procedure.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -119,26 +125,46 @@ export const SchedulingModule: React.FC<SchedulingModuleProps> = ({
     }
   };
 
+  const timeSlots = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'];
+
+  const appointmentsByDentist = useMemo(() => {
+    return clinicDentists.map((dentist) => {
+      const dayAppointments = appointments.filter((apt) => {
+        const sameDentist = apt.dentistId === dentist.id || apt.dentist === dentist.name;
+        return sameDentist && apt.date === boardDate && apt.status !== 'cancelled';
+      });
+      return { dentist, dayAppointments };
+    });
+  }, [appointments, boardDate]);
+
   const handleCreateAppointment = (e: React.FormEvent) => {
     e.preventDefault();
-    const patient = patients.find((p) => p.id === newPatientId) || patients[0];
+    const selectedPatient = patients.find((p) => p.id === newPatientId);
+    const patientName = selectedPatient?.name || walkInName.trim();
+    const patientPhone = selectedPatient?.phone || walkInPhone.trim();
+    if (!patientName || !patientPhone) return;
+    const dentistId = dentistIdFromName(newDentist);
+    const dentist = dentistFromId(dentistId);
     const newApt: Appointment = {
       id: `apt-${Date.now()}`,
-      patientId: patient.id,
-      patientName: patient.name,
-      patientPhone: patient.phone,
+      patientId: selectedPatient?.id || `walkin-${Date.now()}`,
+      patientName,
+      patientPhone,
       date: newDate,
       time: newTime,
       durationMinutes: Number(newDuration),
-      dentist: newDentist,
+      dentist: dentist.name,
+      dentistId: dentist.id,
       procedure: newProcedure,
       status: 'pending',
       reminderSent: sendAutoSms,
       channel: 'sms',
       smsStatus: sendAutoSms ? 'enviado' : 'pendente',
       smsSentAt: sendAutoSms ? new Date().toISOString().replace('T', ' ').slice(0, 19) : undefined,
-      smsMessageContent: `OdontoMind: ${patient.name.split(' ')[0]}, consulta agendada para ${newDate} às ${newTime} com ${newDentist.split(' ')[0]}. Responda 1 p/ confirmar.`,
-      smsProviderId: `SMS-AUTO-${Date.now().toString(36).toUpperCase()}`
+      smsMessageContent: `OdontoMind: ${patientName.split(' ')[0]}, consulta agendada para ${newDate} as ${newTime} com ${dentist.name.split(' ')[0]}. Responda 1 p/ confirmar.`,
+      smsProviderId: `SMS-AUTO-${Date.now().toString(36).toUpperCase()}`,
+      googleCalendarId: dentist.calendarId,
+      googleSyncStatus: 'pending'
     };
     onAddAppointment(newApt);
     setIsNewModalOpen(false);
@@ -261,11 +287,15 @@ export const SchedulingModule: React.FC<SchedulingModuleProps> = ({
             <span>Módulo de Integração SMS Automático & Status de Entrega</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-slate-900">
-            Agenda Clínica, Disparos de SMS & Recibos de Entrega
+            Agenda por Dentista, Google Calendar e SMS
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mt-1">
-            Envio automático de confirmações imediatas e lembretes 24h via SMS diretamente para o telefone do paciente, com rastreabilidade de entrega pela operadora e confirmação instantânea de presença.
+            Cada profissional tem a propria grade. Consultas ficam salvas neste site e, com token, vao para o Google Calendar do dentista.
           </p>
+          <div className="mt-2 inline-flex items-center gap-2 text-[11px] font-medium px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-slate-600">
+            <Cloud className={`w-3.5 h-3.5 ${googleStatus?.connected ? 'text-emerald-600' : 'text-slate-400'}`} />
+            <span>{googleStatus?.message || 'Verificando Google Calendar...'}</span>
+          </div>
         </div>
 
         <button
@@ -340,6 +370,72 @@ export const SchedulingModule: React.FC<SchedulingModuleProps> = ({
         </div>
       </div>
 
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-heading font-bold text-slate-900 text-sm sm:text-base">Grade do dia por dentista</h3>
+            <p className="text-[11px] text-slate-500">Consultas persistidas no site. Clique em um horario livre para agendar.</p>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <span className="font-semibold">Data</span>
+            <input
+              type="date"
+              value={boardDate}
+              onChange={(e) => setBoardDate(e.target.value)}
+              className="text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
+            />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {appointmentsByDentist.map(({ dentist, dayAppointments }) => (
+            <div key={dentist.id} className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="px-3 py-2.5 text-white" style={{ backgroundColor: dentist.color }}>
+                <p className="text-xs font-bold">{dentist.name}</p>
+                <p className="text-[10px] text-white/90">{dentist.specialty} · {dentist.cro}</p>
+                <p className="text-[10px] text-white/80 truncate">Calendar: {dentist.calendarId}</p>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {timeSlots.map((slot) => {
+                  const booked = dayAppointments.find((apt) => apt.time === slot);
+                  return (
+                    <button
+                      key={`${dentist.id}-${slot}`}
+                      type="button"
+                      onClick={() => {
+                        setNewDentist(dentist.name);
+                        setNewTime(slot);
+                        setNewDate(boardDate);
+                        setIsNewModalOpen(true);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-[11px] cursor-pointer ${
+                        booked ? 'bg-slate-50' : 'hover:bg-cyan-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-slate-500">{slot}</span>
+                        {booked ? (
+                          <span className="truncate text-slate-800 font-semibold">
+                            {booked.patientName} · {booked.procedure}
+                          </span>
+                        ) : (
+                          <span className="text-cyan-700 font-medium">Livre</span>
+                        )}
+                      </div>
+                      {booked && (
+                        <span className="block text-[10px] text-slate-500 mt-0.5">
+                          {booked.googleSyncStatus === 'synced' ? 'No Google Calendar' : 'Salva no site'}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Filter and Search Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <div className="flex flex-1 items-center gap-3 flex-wrap">
@@ -388,8 +484,11 @@ export const SchedulingModule: React.FC<SchedulingModuleProps> = ({
             className="text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
           >
             <option value="all">Todos os Dentistas</option>
-            <option value="Dra. Camila Alencar">Dra. Camila Alencar</option>
-            <option value="Dr. Lucas Sampaio">Dr. Lucas Sampaio</option>
+            {clinicDentists.map((dentist) => (
+              <option key={dentist.id} value={dentist.name}>
+                {dentist.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -700,6 +799,7 @@ export const SchedulingModule: React.FC<SchedulingModuleProps> = ({
                   onChange={(e) => setNewPatientId(e.target.value)}
                   className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
                 >
+                  <option value="walk-in">Consulta avulsa (sem prontuario)</option>
                   {patients.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} — Tel: {p.phone} ({p.treatment})
@@ -707,6 +807,30 @@ export const SchedulingModule: React.FC<SchedulingModuleProps> = ({
                   ))}
                 </select>
               </div>
+              {(!newPatientId || newPatientId === 'walk-in') && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Nome do paciente:</label>
+                    <input
+                      type="text"
+                      required
+                      value={walkInName}
+                      onChange={(e) => setWalkInName(e.target.value)}
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Telefone:</label>
+                    <input
+                      type="tel"
+                      required
+                      value={walkInPhone}
+                      onChange={(e) => setWalkInPhone(e.target.value)}
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -739,9 +863,11 @@ export const SchedulingModule: React.FC<SchedulingModuleProps> = ({
                     onChange={(e) => setNewDentist(e.target.value)}
                     className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
                   >
-                    <option value="Dra. Camila Alencar">Dra. Camila Alencar (Ortodontia)</option>
-                    <option value="Dr. Lucas Sampaio">Dr. Lucas Sampaio (Implantes)</option>
-                    <option value="Dr. Marcelo Ribeiro">Dr. Marcelo Ribeiro (Reabilitação)</option>
+                    {clinicDentists.map((dentist) => (
+                      <option key={dentist.id} value={dentist.name}>
+                        {dentist.name} ({dentist.specialty})
+                      </option>
+                    ))}
                   </select>
                 </div>
 

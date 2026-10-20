@@ -19,7 +19,6 @@ import {
   Zap,
   Menu,
   X,
-  ChevronRight,
   Network
 } from 'lucide-react';
 
@@ -60,40 +59,41 @@ export const Header: React.FC<HeaderProps> = ({
       label: 'CRM de Pacientes',
       icon: <Kanban className="w-4 h-4" />,
       badge: 'Prontuários',
-      desc: 'Funil Kanban, Prontuários Clínicos e Histórico Odontológico'
+      desc: 'Funil Kanban, prontuários clínicos e histórico odontológico'
     },
     {
       id: 'sdr',
-      label: 'SDR & Redes Sociais',
+      label: 'SDR e Redes Sociais',
       icon: <Bot className="w-4 h-4" />,
-      badge: 'Meta & Social',
-      desc: 'Qualificação Comercial de Leads do Instagram, TikTok e Facebook'
+      badge: 'Meta e Social',
+      desc: 'Qualificação comercial de leads do Instagram, TikTok e Facebook'
     },
     {
       id: 'automations',
-      label: 'Skills & Automações',
+      label: 'Skills e Automações',
       icon: <Zap className="w-4 h-4" />,
       badge: '8 Skills',
-      desc: 'Triggers automáticos de Anti-falta, Pós-op e Retenção'
+      desc: 'Triggers automáticos de anti-falta, pós-op e retenção'
     },
     {
       id: 'engagement_reports',
-      label: 'Analytics & Gráficos',
+      label: 'Analytics e Gráficos',
       icon: <BarChart3 className="w-4 h-4" />,
       badge: 'Recharts',
       desc: 'Métricas de conversão, LTV, faturamento e no-show'
     },
     {
       id: 'scheduling',
-      label: 'Agenda Integrada',
+      label: 'Agenda por Dentista',
       icon: <Calendar className="w-4 h-4" />,
-      desc: 'Horários por cadeira, confirmações e preenchimento de lacunas'
+      badge: 'Google',
+      desc: 'Grade por profissional, consultas persistidas e Google Calendar'
     },
     {
       id: 'content_agents',
       label: 'Estúdio de Conteúdo IA',
       icon: <Share2 className="w-4 h-4" />,
-      badge: 'Posts & Vídeos',
+      badge: 'Posts & Videos',
       desc: 'Geração de roteiros para Reels, TikTok e carrosséis com validação CRO'
     },
     {
@@ -107,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
       id: 'whatsapp',
       label: 'WhatsApp & Meta API',
       icon: <MessageCircle className="w-4 h-4" />,
-      badge: 'Meta Cloud API',
+      badge: 'Carol',
       desc: 'Simulador e sincronizador oficial Meta Graph API v21.0'
     },
     {
@@ -121,11 +121,11 @@ export const Header: React.FC<HeaderProps> = ({
       id: 'roadmap',
       label: 'Mapa do Projeto',
       icon: <Compass className="w-4 h-4" />,
-      desc: 'Engenharia de software, fases de entrega e arquitetura técnica'
+      desc: 'Engenharia de software, fases de entrega e arquitetura tecnica'
     },
     {
       id: 'services',
-      label: 'Serviços & LTV',
+      label: 'Servicos e LTV',
       icon: <Sparkles className="w-4 h-4" />,
       desc: 'Tabela de procedimentos, tíquete médio e ciclo de vida'
     },
@@ -144,79 +144,126 @@ export const Header: React.FC<HeaderProps> = ({
     setIsNavMenuOpen(false);
   };
 
+  const renderNavButtons = (showDescription: boolean) =>
+    navItems.map((item) => {
+      const isActive = activeTab === item.id;
+      return (
+        <button
+          key={item.id}
+          onClick={() => handleSelectTab(item.id)}
+          title={item.label}
+          aria-label={item.label}
+          aria-current={isActive ? 'page' : undefined}
+          className={`w-full min-h-11 flex items-center gap-3 px-3 rounded-xl text-left cursor-pointer transition-colors ${
+            isActive
+              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800 border border-transparent'
+          }`}
+        >
+          <span className={`shrink-0 ${isActive ? 'text-cyan-300' : 'text-slate-400'}`}>{item.icon}</span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              <span className="font-semibold text-xs text-white truncate">{item.label}</span>
+              {item.badge && (
+                <span
+                  className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                    isActive ? 'bg-cyan-400 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  }`}
+                >
+                  {item.badge}
+                </span>
+              )}
+            </span>
+            {showDescription && item.desc && (
+              <span className="block text-[10px] text-slate-500 truncate mt-0.5">{item.desc}</span>
+            )}
+          </span>
+        </button>
+      );
+    });
+
   return (
     <>
       <aside
-        className={`fixed left-0 top-0 z-40 h-dvh bg-slate-950 border-r border-slate-800 text-white flex flex-col transition-[width] duration-300 ease-out motion-reduce:transition-none ${
-          compact ? 'w-14 sm:w-16' : 'w-14 sm:w-16'
-        }`}
+        className="hidden md:flex fixed left-0 top-0 z-40 h-dvh w-60 lg:w-64 bg-slate-950 border-r border-slate-800 text-white flex-col"
         aria-label="Navegação principal"
       >
-        <div className="h-14 sm:h-16 flex items-center justify-center border-b border-slate-800 shrink-0">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-teal-400 flex items-center justify-center text-slate-950 font-black text-sm shadow-lg shadow-cyan-500/20">
+        <div className="h-14 sm:h-16 px-4 flex items-center gap-3 border-b border-slate-800 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-teal-400 flex items-center justify-center text-slate-950 font-black text-sm shadow-lg shadow-cyan-500/20">
             OM
+          </div>
+          <div className="min-w-0">
+            <p className="font-heading font-bold text-sm tracking-tight truncate">
+              OdontoMind <span className="text-cyan-400">AI</span>
+            </p>
+            <p className="text-[10px] text-slate-500 truncate">Menu completo</p>
           </div>
         </div>
 
-        <button
-          onClick={() => setIsNavMenuOpen(true)}
-          className="mx-2 mt-3 min-h-11 flex flex-col items-center justify-center gap-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-cyan-300 cursor-pointer transition-colors"
-          aria-label="Abrir menu de módulos"
-          aria-expanded={isNavMenuOpen}
-        >
-          <Menu className="w-4 h-4" />
-          <span className="text-[9px] font-bold tracking-wide">Menu</span>
-        </button>
-
-        <nav className={`flex-1 overflow-y-auto py-3 px-1.5 space-y-1 transition-opacity duration-300 ease-out motion-reduce:transition-none ${
-          compact ? 'opacity-0 pointer-events-none hidden' : 'opacity-100'
-        }`} aria-label="Atalhos de módulos">
-          {navItems.map((item) => {
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleSelectTab(item.id)}
-                title={item.label}
-                aria-label={item.label}
-                aria-current={isActive ? 'page' : undefined}
-                className={`w-full min-h-11 flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
-                  isActive
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'
-                }`}
-              >
-                {item.icon}
-              </button>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1" aria-label="Módulos da plataforma">
+          {renderNavButtons(false)}
         </nav>
 
-        <div className="shrink-0 border-t border-slate-800 p-1.5 flex justify-center">
-          <ToastNotificationCenter
-            notifications={notifications}
-            onDismiss={onDismissToast}
-            onNavigateTab={setActiveTab}
-            onMarkAllAsRead={onMarkAllNotificationsAsRead}
-            onClearAll={onClearAllNotifications}
-            onTriggerDemoToast={onTriggerDemoToast}
-          />
+        <div className="shrink-0 border-t border-slate-800 p-2 space-y-1.5">
+          <button
+            onClick={onOpenGitHubModal}
+            className="w-full min-h-11 flex items-center gap-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 cursor-pointer"
+            title="Subir codigo para repositorio no GitHub"
+          >
+            <Github className="w-4 h-4" />
+            <span className="text-xs font-semibold">GitHub</span>
+          </button>
+          <button
+            onClick={onOpenRenderModal}
+            className="w-full min-h-11 flex items-center gap-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 cursor-pointer"
+            title="Guia e Blueprint de Hospedagem no Render"
+          >
+            <Cloud className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-semibold">Render</span>
+          </button>
+          <button
+            onClick={onOpenNewPatientModal}
+            className="w-full min-h-11 flex items-center gap-2 px-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span className="text-xs font-semibold">Novo Paciente</span>
+          </button>
         </div>
       </aside>
 
+      <div className="fixed top-3 right-3 z-50">
+        <ToastNotificationCenter
+          notifications={notifications}
+          onDismiss={onDismissToast}
+          onNavigateTab={setActiveTab}
+          onMarkAllAsRead={onMarkAllNotificationsAsRead}
+          onClearAll={onClearAllNotifications}
+          onTriggerDemoToast={onTriggerDemoToast}
+        />
+      </div>
+
+      <button
+        onClick={() => setIsNavMenuOpen(true)}
+        className="md:hidden fixed top-3 left-3 z-50 min-h-11 min-w-11 flex items-center justify-center rounded-xl bg-slate-950 text-cyan-300 border border-slate-800 shadow-lg cursor-pointer"
+        aria-label="Abrir menu de módulos"
+        aria-expanded={isNavMenuOpen}
+      >
+        <Menu className="w-4 h-4" />
+      </button>
+
       <header
-        className={`sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white pl-14 sm:pl-16 transition-transform duration-300 ease-out motion-reduce:transition-none ${
+        className={`sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white pl-3 md:pl-60 lg:pl-64 pr-16 transition-transform duration-300 ease-out motion-reduce:transition-none ${
           compact ? '-translate-y-full pointer-events-none h-0 overflow-hidden border-0' : 'translate-y-0'
         }`}
       >
         <div className="px-3 sm:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="min-w-0">
+            <div className="min-w-0 pl-12 md:pl-0">
               <div className="flex items-center gap-2">
                 <span className="font-heading font-bold text-sm sm:text-lg tracking-tight text-white truncate">
                   OdontoMind <span className="text-cyan-400">AI</span>
                 </span>
-                <span className="hidden md:inline-block text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-semibold">
+                <span className="hidden lg:inline-block text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-semibold">
                   Engenharia & CRO
                 </span>
               </div>
@@ -234,48 +281,22 @@ export const Header: React.FC<HeaderProps> = ({
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPipelineValue)}
                 </strong>
               </div>
-
-              <button
-                onClick={onOpenGitHubModal}
-                className="hidden sm:flex items-center gap-1.5 min-h-11 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs px-3 rounded-lg cursor-pointer"
-                title="Subir código para repositório no GitHub"
-              >
-                <Github className="w-3.5 h-3.5 text-white" />
-                <span className="hidden md:inline">GitHub</span>
-              </button>
-
-              <button
-                onClick={onOpenRenderModal}
-                className="hidden sm:flex items-center gap-1.5 min-h-11 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs px-3 rounded-lg cursor-pointer"
-                title="Guia & Blueprint de Hospedagem no Render (render.com)"
-              >
-                <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden md:inline">Render</span>
-              </button>
-
-              <button
-                onClick={onOpenNewPatientModal}
-                className="flex items-center gap-1.5 min-h-11 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-semibold text-xs sm:text-sm px-3 rounded-lg cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">Novo Paciente</span>
-              </button>
             </div>
           </div>
         </div>
       </header>
 
       {isNavMenuOpen && (
-        <div className="fixed inset-0 z-50 flex">
+        <div className="fixed inset-0 z-50 flex md:hidden">
           <div
-            className="w-[min(100%,20rem)] sm:w-80 h-dvh bg-slate-950 border-r border-slate-800 shadow-2xl flex flex-col animate-fadeIn"
+            className="w-[min(100%,20rem)] h-dvh bg-slate-950 border-r border-slate-800 shadow-2xl flex flex-col"
             role="dialog"
             aria-label="Módulos da plataforma"
           >
-            <div className="h-14 sm:h-16 px-4 flex items-center justify-between border-b border-slate-800">
+            <div className="h-14 px-4 flex items-center justify-between border-b border-slate-800">
               <div>
                 <p className="text-xs font-bold text-white uppercase tracking-wider">Módulos</p>
-                <p className="text-[11px] text-slate-400">Menu recolhe ao selecionar</p>
+                <p className="text-[11px] text-slate-400">Menu completo</p>
               </div>
               <button
                 onClick={() => setIsNavMenuOpen(false)}
@@ -285,45 +306,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
-
-            <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-              {navItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleSelectTab(item.id)}
-                    className={`w-full min-h-11 flex items-center justify-between p-3 rounded-xl text-left cursor-pointer transition-colors ${
-                      isActive
-                        ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/50'
-                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`p-2 rounded-lg shrink-0 ${isActive ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-800 text-slate-400'}`}>
-                        {item.icon}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-white truncate">{item.label}</span>
-                          {item.badge && (
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                              isActive ? 'bg-cyan-400 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'
-                            }`}>
-                              {item.badge}
-                            </span>
-                          )}
-                        </div>
-                        {item.desc && (
-                          <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{item.desc}</p>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronRight className={`w-4 h-4 shrink-0 ${isActive ? 'text-cyan-400' : 'text-slate-600'}`} />
-                  </button>
-                );
-              })}
-            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-1.5">{renderNavButtons(true)}</div>
           </div>
           <button
             className="flex-1 bg-slate-950/55 backdrop-blur-sm cursor-pointer"

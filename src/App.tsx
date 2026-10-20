@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { TabType, PatientLead, PipelineStage, Appointment, ToastNotification, ToastType, SmsDeliveryStatus } from './types';
 import { initialPatients, initialAppointments } from './data/crmData';
+import { dentistFromId, dentistIdFromName } from './data/dentists';
+import { syncAppointmentToGoogle } from './lib/googleCalendar';
 import { Header } from './components/Header';
 import { RoadmapMap } from './components/RoadmapMap';
 import { CrmPipeline } from './components/CrmPipeline';
@@ -189,13 +191,37 @@ export default function App() {
 
   // Scheduling handlers
   const handleAddAppointment = (newApt: Appointment) => {
-    setAppointments((prev) => [newApt, ...prev]);
+    const dentistId = newApt.dentistId || dentistIdFromName(newApt.dentist);
+    const dentist = dentistFromId(dentistId);
+    const withDentist: Appointment = {
+      ...newApt,
+      dentistId,
+      dentist: dentist.name,
+      googleCalendarId: dentist.calendarId,
+      googleSyncStatus: newApt.googleSyncStatus || 'pending'
+    };
+    setAppointments((prev) => [withDentist, ...prev]);
     addToast({
       type: 'success',
       title: 'Nova Consulta Agendada',
-      message: `${newApt.patientName} agendado(a) com ${newApt.dentist} para ${newApt.date} às ${newApt.time}.`,
+      message: `${withDentist.patientName} agendado(a) com ${withDentist.dentist} para ${withDentist.date} as ${withDentist.time}.`,
       actionLabel: 'Ver Agenda',
       actionTab: 'scheduling'
+    });
+
+    void syncAppointmentToGoogle(withDentist, dentist).then((result) => {
+      setAppointments((prev) =>
+        prev.map((apt) =>
+          apt.id === withDentist.id
+            ? {
+                ...apt,
+                googleEventId: result.googleEventId,
+                googleHtmlLink: result.googleHtmlLink,
+                googleSyncStatus: result.status
+              }
+            : apt
+        )
+      );
     });
   };
 
@@ -374,10 +400,10 @@ export default function App() {
       />
 
       <main
-        className={`flex-1 w-full pl-14 sm:pl-16 transition-[padding] duration-300 ease-out motion-reduce:transition-none ${
+        className={`flex-1 w-full pl-3 md:pl-60 lg:pl-64 transition-[padding] duration-300 ease-out motion-reduce:transition-none ${
           isWhatsAppFocus
-            ? 'max-w-none pr-2 sm:pr-3 py-2 sm:py-3'
-            : 'max-w-7xl pr-4 sm:pr-6 lg:pr-8 py-6 sm:py-8'
+            ? 'max-w-none pr-14 sm:pr-16 py-2 sm:py-3'
+            : 'max-w-none pr-4 sm:pr-6 lg:pr-8 py-6 sm:py-8'
         }`}
       >
         {activeTab === 'crm' && (
@@ -473,7 +499,7 @@ export default function App() {
         }}
       />
 
-      <footer className={`bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-8 pl-14 sm:pl-16 transition-all duration-300 ease-out motion-reduce:transition-none ${
+      <footer className={`bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-8 pl-3 md:pl-60 lg:pl-64 transition-all duration-300 ease-out motion-reduce:transition-none ${
         isWhatsAppFocus ? 'hidden' : 'mt-12'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
