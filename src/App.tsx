@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('crm');
+  const [activeTab, setActiveTab] = useState<TabType>('whatsapp');
 
   // Pacientes e Prontuários Reais (iniciados limpos ou carregados do navegador)
   const [patients, setPatients] = useState<PatientLead[]>(() => {

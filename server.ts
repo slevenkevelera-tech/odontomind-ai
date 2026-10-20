@@ -1129,6 +1129,20 @@ app.post('/api/omniroute/dispatch', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Input de mensagem obrigatório.' });
     }
 
+    const isCaptureHook =
+      context?.slotStatus === 'reserved' ||
+      (context?.source === 'whatsapp_simulator' && context?.phase === 'capture_hook');
+
+    if (isCaptureHook) {
+      return res.json({
+        success: true,
+        hookAccepted: true,
+        assignedAgentId: agentId || 'agent_sdr',
+        status: 'queued',
+        output: ''
+      });
+    }
+
     // Dynamic Intent Routing if agentId is not specified or auto
     let targetAgentId = agentId;
     if (!targetAgentId || targetAgentId === 'auto') {

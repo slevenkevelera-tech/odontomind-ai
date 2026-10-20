@@ -19,6 +19,7 @@ import {
   getRenderSyncInfo,
   resolveMetaWebhookPublicUrl
 } from '../lib/metaWebhook';
+import { omniRouteService } from '../lib/omniRoute';
 import { 
   Send, 
   Phone, 
@@ -269,6 +270,16 @@ export const WhatsAppSimulator: React.FC<WhatsAppSimulatorProps> = ({ onAddToast
         };
 
         setMessages(prev => [...prev, agentMsg]);
+
+        void omniRouteService.dispatchDemand({
+          channel: 'whatsapp',
+          rawInput: text,
+          sourceUserName: 'Paciente',
+          preferredAgentId: 'agent_sdr',
+          slotStatus: 'reserved',
+          source: 'whatsapp_simulator',
+          phase: 'capture_hook'
+        }).catch(() => {});
       } else {
         // Fallback message
         setMessages(prev => [

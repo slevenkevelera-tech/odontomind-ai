@@ -23,7 +23,7 @@ export const defaultOmniAgents: OmniAgentDefinition[] = [
     id: 'agent_sdr',
     name: 'SDR Qualificador de Leads',
     role: 'sdr_qualification',
-    description: 'Atende leads provenientes de anúncios e redes sociais, realiza triagem BANT/SPIN e encaminha para agendamento.',
+    description: 'Slot reservado (Fase 1 capture_hook). Fase 2: ativa captacao SDR. Fase 3: handoff agent_scheduler + Google Agenda. Fase 4: notificacoes e gravacao em Agenda/Analytics/Novo Paciente.',
     supportedChannels: ['whatsapp', 'instagram', 'facebook', 'tiktok', 'webchat'],
     model: 'gemini-3.8-flash',
     systemPromptHint: 'Você é um SDR odontológico amigável e focado em entender as necessidades do paciente sem diagnosticar precocemente.',
@@ -290,10 +290,13 @@ export const omniRouteService = {
     sourceUserName?: string;
     sourceContact?: string;
     preferredAgentId?: string;
+    slotStatus?: 'reserved';
+    source?: string;
+    phase?: string;
   }): Promise<OmniRouteDemand> {
     const startTime = performance.now();
     const agents = this.getAgents();
-    const config = this.getConfig();
+    const isReservedHook = params.slotStatus === 'reserved';
 
     const { agentId: suggestedAgentId, intent, priority } = this.classifyIntentAndRoute(
       params.rawInput, 
@@ -303,12 +306,14 @@ export const omniRouteService = {
     const targetAgentId = params.preferredAgentId || suggestedAgentId;
     const agent = agents.find((a) => a.id === targetAgentId) || agents[0];
 
-    // Simulação ou chamada real de geração da IA
     let responseText = '';
     let croApproved = true;
+    const controller = isReservedHook ? new AbortController() : undefined;
+    const abortTimer = controller
+      ? setTimeout(() => controller.abort(), 1500)
+      : undefined;
 
     try {
-      // Tentativa de invocar backend se disponível
       const res = await fetch('/api/omniroute/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -316,20 +321,33 @@ export const omniRouteService = {
           channel: params.channel,
           input: params.rawInput,
           agentId: targetAgentId,
-          sourceUserName: params.sourceUserName || 'Paciente'
-        })
+          sourceUserName: params.sourceUserName || 'Paciente',
+          context: isReservedHook
+            ? {
+                source: params.source || 'whatsapp_simulator',
+                slotStatus: params.slotStatus,
+                phase: params.phase || 'capture_hook'
+              }
+            : undefined
+        }),
+        signal: controller?.signal
       });
 
       if (res.ok) {
         const data = await res.json();
-        responseText = data.output || data.result;
-        croApproved = data.croApproved !== false;
-      } else {
+        if (!isReservedHook) {
+          responseText = data.output || data.result;
+          croApproved = data.croApproved !== false;
+        }
+      } else if (!isReservedHook) {
         throw new Error('Fallback para motor local');
       }
     } catch (e) {
-      // Fallback de alta fidelidade para execução autônoma
-      responseText = this.generateLocalAgentResponse(agent, params.rawInput, params.sourceUserName || 'Paciente');
+      if (!isReservedHook) {
+        responseText = this.generateLocalAgentResponse(agent, params.rawInput, params.sourceUserName || 'Paciente');
+      }
+    } finally {
+      if (abortTimer) clearTimeout(abortTimer);
     }
 
     const duration = Math.round(performance.now() - startTime);
@@ -343,15 +361,22 @@ export const omniRouteService = {
       detectedIntent: intent,
       assignedAgentId: agent.id,
       priority,
-      status: 'completed',
-      agentOutput: responseText,
+      status: isReservedHook ? 'queued' : 'completed',
+      agentOutput: isReservedHook ? '' : responseText,
       croApproved,
       executionTimeMs: duration,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       metadata: {
         agentName: agent.name,
         role: agent.role,
-        channel: params.channel
+        channel: params.channel,
+        ...(isReservedHook
+          ? {
+              slotStatus: 'reserved',
+              phase: params.phase || 'capture_hook',
+              source: params.source || 'whatsapp_simulator'
+            }
+          : {})
       }
     };
 
