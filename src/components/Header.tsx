@@ -197,17 +197,15 @@ export const Header: React.FC<HeaderProps> = ({
       </a>
 
       <aside
-        className="hidden md:flex fixed left-0 top-0 z-40 h-dvh w-[18.5rem] lg:w-80 bg-slate-950 border-r border-slate-800 text-white flex-col"
+        className={`hidden md:flex fixed left-0 z-30 w-[18.5rem] lg:w-80 bg-slate-950 border-r border-slate-800 text-white flex-col ${
+          compact ? 'top-14 h-[calc(100dvh-3.5rem)]' : 'top-16 h-[calc(100dvh-4rem)]'
+        }`}
         aria-label="Navegação principal"
       >
-        <div className="h-16 px-4 flex items-center gap-3 border-b border-slate-800 shrink-0">
-          <BrandLogo size={40} />
-          <div className="min-w-0">
-            <p className="font-heading font-bold text-sm tracking-tight truncate">
-              OdontoMind <span className="text-cyan-400">AI</span>
-            </p>
-            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Módulos</p>
-          </div>
+        <div className="h-9 px-4 flex items-center border-b border-slate-800 shrink-0">
+          <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+            Módulos da plataforma
+          </p>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-1" aria-label="Módulos da plataforma">
@@ -241,26 +239,27 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </aside>
 
-      <button
-        onClick={() => setIsNavMenuOpen(true)}
-        className="md:hidden fixed top-3 left-3 z-50 min-h-11 min-w-11 flex items-center justify-center rounded-xl bg-slate-950 text-cyan-300 border border-slate-800 shadow-lg cursor-pointer"
-        aria-label="Abrir menu de módulos"
-        aria-expanded={isNavMenuOpen}
-      >
-        <Menu className="w-4 h-4" />
-      </button>
-
-      <header className="sticky top-0 z-40 overflow-visible bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white pl-3 md:pl-[18.5rem] lg:pl-80">
-        <div className="mx-auto max-w-7xl px-3 sm:px-6">
+      <header className="sticky top-0 z-40 overflow-visible bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white">
+        <div className="w-full px-3 sm:px-6">
           <div className={`flex items-center justify-between gap-3 ${compact ? 'h-14' : 'h-16'}`}>
-            <div className="min-w-0 pl-12 md:pl-0 flex items-center gap-3">
-              <BrandLogo size={compact ? 36 : 44} className="shrink-0 hidden sm:block" />
+            <div className="min-w-0 flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => setIsNavMenuOpen(true)}
+                className="md:hidden shrink-0 min-h-11 min-w-11 flex items-center justify-center rounded-xl bg-slate-950 text-cyan-300 border border-slate-800 cursor-pointer"
+                aria-label="Abrir menu de módulos"
+                aria-expanded={isNavMenuOpen}
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+
+              <BrandLogo size={compact ? 34 : 40} className="shrink-0" />
+
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-heading font-bold text-sm sm:text-lg tracking-tight text-white truncate">
-                    OdontoMind <span className="text-cyan-400">AI</span>
+                    OdontoMind <span className="text-cyan-400">IA</span>
                   </span>
-                  <span className="hidden lg:inline-block text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-semibold">
+                  <span className="hidden sm:inline-block text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-semibold whitespace-nowrap">
                     Engenharia e CRO
                   </span>
                 </div>
@@ -305,7 +304,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <div className="hidden md:flex items-center gap-2 text-xs text-slate-300 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 min-h-11">
                 <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Pipeline:</span>
+                <span>Funil de Vendas:</span>
                 <strong className="text-emerald-400 font-semibold">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPipelineValue)}
                 </strong>

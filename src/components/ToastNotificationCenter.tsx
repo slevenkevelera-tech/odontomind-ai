@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ToastNotification, ToastType, TabType } from '../types';
 import { 
   Bell, 
@@ -75,6 +76,73 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activeToasts, setActiveToasts] = useState<ToastNotification[]>([]);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
+  const bellRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const updateDropdownPosition = useCallback(() => {
+    const trigger = bellRef.current;
+    if (!trigger) return;
+
+    const margin = 12;
+    const gutter = 8;
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.min(352, window.innerWidth - margin * 2);
+    const maxLeft = window.innerWidth - width - margin;
+    const left = Math.min(Math.max(rect.right - width, margin), Math.max(maxLeft, margin));
+    const top = Math.min(rect.bottom + gutter, window.innerHeight - margin);
+    const maxHeight = Math.max(220, window.innerHeight - top - margin);
+
+    setDropdownPosition({ top, left, width, maxHeight });
+  }, []);
+
+  useEffect(() => {
+    if (!isDropdownOpen) {
+      setDropdownPosition(null);
+      return;
+    }
+
+    updateDropdownPosition();
+
+    const handleViewportChange = () => updateDropdownPosition();
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [isDropdownOpen, updateDropdownPosition]);
+
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (bellRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+      setIsDropdownOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsDropdownOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDropdownOpen]);
 
   // Keep track of recent toasts to show in floating container (last 4)
   useEffect(() => {
@@ -134,6 +202,7 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
       {/* 1. Header Notification Bell Button & Dropdown Trigger */}
       <div className="relative">
         <button
+          ref={bellRef}
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           className={`relative min-h-11 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             isDropdownOpen 
@@ -152,11 +221,22 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
           )}
         </button>
 
-        {/* Dropdown Notification Drawer */}
-        {isDropdownOpen && (
-          <div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-1.5rem))] bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 text-slate-800 overflow-hidden animate-scaleIn">
+        {/* Dropdown Notification Drawer (portal + viewport-aware positioning) */}
+        {isDropdownOpen && dropdownPosition && typeof document !== 'undefined' && createPortal(
+          <div
+            ref={dropdownRef}
+            role="dialog"
+            aria-label="Central de notificações"
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+              maxHeight: dropdownPosition.maxHeight
+            }}
+            className="fixed z-[70] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 text-slate-800 overflow-hidden animate-scaleIn"
+          >
             {/* Header of Drawer */}
-            <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Bell className="w-4 h-4 text-cyan-400" />
                 <h3 className="font-heading font-bold text-sm">
@@ -192,7 +272,7 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
             </div>
 
             {/* Quick Demo Simulator Buttons */}
-            <div className="bg-slate-100/90 p-3 border-b border-slate-200/80 space-y-1.5">
+            <div className="bg-slate-100/90 p-3 border-b border-slate-200/80 space-y-1.5 shrink-0">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
                 Simular Alertas em Tempo Real:
               </span>
@@ -222,7 +302,7 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
             </div>
 
             {/* Notifications List */}
-            <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+            <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100">
               {notifications.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 text-xs space-y-2">
                   <CheckCheck className="w-8 h-8 mx-auto text-emerald-500 opacity-60" />
@@ -290,7 +370,7 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
 
             {/* Footer of Drawer */}
             {notifications.length > 0 && (
-              <div className="bg-slate-50 p-2.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+              <div className="bg-slate-50 p-2.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
                 <button
                   onClick={onMarkAllAsRead}
                   className="hover:text-slate-800 font-medium flex items-center gap-1 cursor-pointer"
@@ -307,7 +387,8 @@ export const ToastNotificationCenter: React.FC<ToastNotificationCenterProps> = (
                 </button>
               </div>
             )}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
